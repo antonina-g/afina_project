@@ -20,6 +20,14 @@ class Course(models.Model):
 
     def __str__(self):
         return self.title
+    
+    SOURCE_CHOICES = [
+        ('stepik_api', 'Stepik API'),
+        ('user_added', 'User Added'),
+    ]
+    
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='stepik_api')
+    stepik_url = models.URLField(blank=True, help_text="Full Stepik course URL")
 
 
 class UserProfile(models.Model):
@@ -41,7 +49,7 @@ class UserProfile(models.Model):
     interests = models.TextField()  # JSON или comma-separated
     learning_style = models.CharField(max_length=20, choices=LEARNING_STYLES, default='visual')
     pace = models.CharField(max_length=20, choices=PACE_CHOICES, default='normal')
-    level = models.CharField(max_length=50, default='beginner')
+    level = models.CharField(max_length=50, default='beginner', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
