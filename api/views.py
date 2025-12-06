@@ -471,16 +471,54 @@ def recommendations(request, user_id):
     except (User.DoesNotExist, UserProfile.DoesNotExist):
         return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    # простая фильтрация курсов под пользователя
+    # Берём все курсы
     qs = Course.objects.all()
 
-    # пример: фильтруем по языку (если профиль на русском)
-    if profile.interests:
-        # можно потом сделать разбор интересов, пока просто игнорируем
-        pass
+    scored_courses = []
 
-    # пока просто берём первые 5 курсов
-    courses = qs[:5]
+    for course in qs:
+        score = 0
+
+        # 1. Совпадение формата с learning_style
+        if profile.learning_style in ['visual', 'mixed']:
+            if course.format_type in ['video', 'mixed']:
+                score += 3
+        if profile.learning_style == 'auditory':
+            if course.format_type in ['audio', 'video', 'mixed']:
+                score += 3
+        if profile.learning_style == 'read_write':
+            if course.format_type in ['text', 'mixed']:
+                score += 3
+        if profile.learning_style == 'kinesthetic':
+            if course.format_type in ['practice', 'mixed']:
+                score += 3
+
+        # 2. Небольшой бонус за простой уровень для низкой дисциплины
+        if profile.discipline_score is not None and profile.discipline_score < 5:
+            if str(course.level).lower() in ['easy', 'beginner', 'basic']:
+                score += 2
+
+        # 3. Бонус, если язык русский (можно потом привязать к профилю)
+        if course.language == 'ru':
+            score += 1
+
+        scored_courses.append((score, course))
+
+    # Сортируем по убыванию score и берём топ-5
+    scored_courses.sort(key=lambda x: x[0], reverse=True)
+    top = [c for s, c in scored_courses if s > 0][:5]  # только с положительным скором
+
+    response_courses = [
+        {
+            'id': c.id,
+            'title': c.title,
+            'level': c.level,
+            'language': c.language,
+            'format_type': c.format_type,
+            'url': c.url,
+        }
+        for c in top
+    ]
 
     return Response({
         'user_id': user.id,
@@ -492,16 +530,9 @@ def recommendations(request, user_id):
             'recommended_pace': profile.recommended_pace,
             'strategy_summary': profile.strategy_summary,
         },
-        'courses': [
-            {
-                'id': c.id,
-                'title': c.title,
-                'level': c.level,
-                'language': c.language,
-                'url': c.url,
-            } for c in courses
-        ]
+        'courses': response_courses,
     })
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def course_strategy(request):
