@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from users.models import User
 from courses.models import Course, UserProfile
 from .llm import generate_learning_strategy_stub
+from .llm import call_llm_for_strategy_stub
 
 
 from courses.models import Course
@@ -562,31 +563,17 @@ def course_strategy(request):
     except Course.DoesNotExist:
         return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Простая заглушка вместо LLM:
-    # позже здесь будет вызов модели, куда мы передадим profile + описание курса.
-    base = f"Курс '{course.title}'. Ваш стиль: {profile.learning_style}. "
-    if profile.learning_style in ['visual', 'mixed']:
-        details = "Делайте визуальные конспекты, используйте схемы и скриншоты."
-    elif profile.learning_style == 'auditory':
-        details = "Слушайте объяснения, проговаривайте вслух ключевые идеи."
-    elif profile.learning_style == 'read_write':
-        details = "Делайте подробные текстовые заметки и перечитывайте материалы."
-    else:
-        details = "Делайте упор на практические задания и проекты."
-
-    if profile.discipline_score and profile.discipline_score >= 8:
-        pace = "Можно идти в интенсивном темпе: занимайтесь каждый день небольшими блоками."
-    elif profile.discipline_score and profile.discipline_score >= 5:
-        pace = "Подойдёт умеренный темп: 3–4 занятия в неделю."
-    else:
-        pace = "Лучше медленный темп: маленькие, но регулярные шаги 2–3 раза в неделю."
-
-    strategy_text = base + " " + details + " " + pace
+    # Заглушка LLM: получаем структурированную стратегию
+    strategy_data = call_llm_for_strategy_stub(profile, course)
 
     return Response({
         "user_id": user.id,
         "course_id": course.id,
         "course_title": course.title,
-        "strategy": strategy_text
+        "strategy": strategy_data["summary"],
+        "pace": strategy_data["pace"],
+        "format_tips": strategy_data["format_tips"],
+        "steps": strategy_data["steps"],
     }, status=status.HTTP_200_OK)
+
 

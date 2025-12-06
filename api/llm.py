@@ -1,5 +1,84 @@
 from typing import List, Dict
 from courses.models import UserProfile, Course
+import json
+from typing import Dict
+from courses.models import UserProfile, Course
+
+SYSTEM_PROMPT = """
+Ты — ассистент по обучению. Твоя задача — на основе профиля ученика и информации о конкретном курсе составить персональную стратегию прохождения именно этого курса.
+
+Всегда отвечай ТОЛЬКО в виде корректного JSON без пояснений, без комментариев и без дополнительного текста вокруг. Структура JSON должна быть строго такой:
+
+{
+  "summary": "строка",
+  "pace": "строка",
+  "format_tips": ["строка", "строка"],
+  "steps": [
+    {
+      "title": "строка",
+      "description": "строка",
+      "recommended_time": "строка"
+    }
+  ]
+}
+
+- summary: краткое (2–3 предложения) описание общей стратегии обучения для этого пользователя и курса.
+- pace: рекомендуемый темп обучения (например: "3 занятия по 45–60 минут в неделю", "по 30 минут каждый день").
+- format_tips: 2–4 коротких совета по формату обучения (как использовать видео, текст, практику и т.п.), адаптированных под стиль обучения пользователя.
+- steps: 3–6 шагов или этапов обучения (например, по неделям или по блокам курса) с понятными названиями, описанием и примерной оценкой времени.
+
+Не используй переносы строк внутри значений JSON, кроме как в виде обычного текста. Не добавляй никаких полей, которых нет в описанной схеме.
+""".strip()
+
+
+def build_user_prompt(profile: UserProfile, course: Course) -> str:
+    """
+    Собирает текстовую часть промпта (user prompt) на основе профиля и курса.
+    """
+    learning_style = profile.learning_style or "не указан"
+    memory_score = profile.memory_score if profile.memory_score is not None else "не указана"
+    discipline_score = profile.discipline_score if profile.discipline_score is not None else "не указана"
+    goals = profile.goals or "не указаны"
+    interests = profile.interests or "не указаны"
+
+    course_desc = (course.description or "").strip()
+    if len(course_desc) > 600:
+        course_desc = course_desc[:600] + "..."
+
+    template = f"""
+Дано:
+
+Профиль пользователя:
+- Стиль обучения: {learning_style}
+- Оценка памяти (1-10): {memory_score}
+- Оценка самодисциплины (1-10): {discipline_score}
+- Цели обучения: {goals}
+- Интересы: {interests}
+
+Курс:
+- Название: {course.title}
+- Уровень: {course.level}
+- Язык: {course.language}
+- Формат: {course.format_type}
+- Краткое описание: {course_desc}
+
+На основе этих данных:
+
+1. Проанализируй сильные и слабые стороны ученика (память, дисциплина, стиль обучения).
+2. Учти уровень и формат курса.
+3. Составь персональную стратегию прохождения ИМЕННО ЭТОГО КУРСА для данного ученика.
+
+Напомню: ответ должен быть ТОЛЬКО в виде JSON со следующими полями:
+- summary
+- pace
+- format_tips
+- steps
+
+Не добавляй никакого текста вне JSON.
+""".strip()
+
+    return template
+
 
 def build_llm_profile_context(profile: UserProfile) -> str:
     """
@@ -66,3 +145,42 @@ def generate_learning_strategy_stub(profile: UserProfile) -> Dict:
         "recommended_pace_description": pace,
         "summary": summary,
     }
+
+def call_llm_for_strategy_stub(profile: UserProfile, course: Course) -> Dict:
+    """
+    Заглушка вместо реального вызова LLM.
+    """
+    summary = (
+        f"Курс '{course.title}' рекомендуется проходить с учётом вашего стиля "
+        f"'{profile.learning_style}' и уровня самодисциплины {profile.discipline_score}/10. "
+        "Фокусируйтесь на регулярной практике и коротких, но частых занятиях."
+    )
+
+    data = {
+        "summary": summary,
+        "pace": "3 занятия по 45–60 минут в неделю",
+        "format_tips": [
+            "После каждого урока делайте краткий конспект ключевых идей.",
+            "Раз в неделю повторяйте конспекты и выполняйте хотя бы одно практическое задание."
+        ],
+        "steps": [
+            {
+                "title": "Этап 1: знакомство с курсом",
+                "description": "Пройдите первые 1–2 модуля и оформите визуальные заметки.",
+                "recommended_time": "3–4 часа"
+            },
+            {
+                "title": "Этап 2: закрепление основ",
+                "description": "Повторите ключевые темы и выполните базовые задания.",
+                "recommended_time": "4–5 часов"
+            },
+            {
+                "title": "Этап 3: регулярная практика",
+                "description": "Каждую неделю добавляйте 1 новый модуль и минимум один мини‑проект.",
+                "recommended_time": "4–6 часов в неделю"
+            }
+        ]
+    }
+
+    json.dumps(data, ensure_ascii=False)
+    return data
