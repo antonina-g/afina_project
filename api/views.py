@@ -7,6 +7,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from users.models import User
 from courses.models import Course, UserProfile
+from .llm import generate_learning_strategy_stub
 
 
 from courses.models import Course
@@ -224,6 +225,32 @@ def onboarding_questions(request):
     ]
     return Response({"questions": questions})
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_profile(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        profile = user.profile  # related_name='profile'
+    except UserProfile.DoesNotExist:
+        return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response({
+        'user_id': user.id,
+        'username': user.username,
+        'learning_style': profile.learning_style,
+        'memory_score': profile.memory_score,
+        'discipline_score': profile.discipline_score,
+        'recommended_format': profile.recommended_format,
+        'recommended_pace': profile.recommended_pace,
+        'strategy_summary': profile.strategy_summary,
+        'goals': profile.goals,
+        'interests': profile.interests,
+    })
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # позже можно завязать на авторизацию
@@ -310,20 +337,22 @@ def onboarding_answers(request):
         profile.recommended_format = 'practice'
 
     # темп по дисциплине
-    if discipline_score is not None:
-        if discipline_score >= 8:
-            profile.recommended_pace = 'fast'
-        elif discipline_score >= 5:
-            profile.recommended_pace = 'normal'
-        else:
-            profile.recommended_pace = 'slow'
+        # --- Генерация стратегии (пока заглушка вместо LLM) ---
+    strategy = generate_learning_strategy_stub(profile)
+    profile.strategy_summary = strategy["summary"]
 
-    profile.strategy_summary = (
-        "Черновая стратегия: "
-        f"стиль={profile.learning_style}, "
-        f"память={profile.memory_score}, "
-        f"самодисциплина={profile.discipline_score}."
-    )
+    # обновим recommended_format по ключевым словам из текстового описания
+    fmt = strategy["recommended_format"]
+    if "video" in fmt:
+        profile.recommended_format = "video"
+    elif "аудио" in fmt or "подкаст" in fmt:
+        profile.recommended_format = "audio"
+    elif "текст" in fmt or "заметки" in fmt:
+        profile.recommended_format = "text"
+    elif "практичес" in fmt:
+        profile.recommended_format = "practice"
+    else:
+        profile.recommended_format = "mixed"
 
     profile.save()
 
@@ -338,6 +367,7 @@ def onboarding_answers(request):
             'strategy_summary': profile.strategy_summary,
         }
     }, status=status.HTTP_200_OK)
+
 
 
 @api_view(['POST'])
@@ -432,4 +462,100 @@ def add_user_course(request):
     }, status=status.HTTP_201_CREATED)
 
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def recommendations(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+        profile = user.profile
+    except (User.DoesNotExist, UserProfile.DoesNotExist):
+        return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # простая фильтрация курсов под пользователя
+    qs = Course.objects.all()
+
+    # пример: фильтруем по языку (если профиль на русском)
+    if profile.interests:
+        # можно потом сделать разбор интересов, пока просто игнорируем
+        pass
+
+    # пока просто берём первые 5 курсов
+    courses = qs[:5]
+
+    return Response({
+        'user_id': user.id,
+        'profile': {
+            'learning_style': profile.learning_style,
+            'memory_score': profile.memory_score,
+            'discipline_score': profile.discipline_score,
+            'recommended_format': profile.recommended_format,
+            'recommended_pace': profile.recommended_pace,
+            'strategy_summary': profile.strategy_summary,
+        },
+        'courses': [
+            {
+                'id': c.id,
+                'title': c.title,
+                'level': c.level,
+                'language': c.language,
+                'url': c.url,
+            } for c in courses
+        ]
+    })
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def course_strategy(request):
+    """
+    Генерирует стратегию обучения под конкретный курс
+    на основе профиля пользователя.
+    Пока без реального LLM — простая заглушка.
+    Ожидает JSON: { "user_id": 2, "course_id": 25 }
+    """
+    user_id = request.data.get('user_id')
+    course_id = request.data.get('course_id')
+
+    if not user_id or not course_id:
+        return Response(
+            {"error": "user_id and course_id are required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        user = User.objects.get(id=user_id)
+        profile = user.profile
+    except (User.DoesNotExist, UserProfile.DoesNotExist):
+        return Response({"error": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        course = Course.objects.get(id=course_id)
+    except Course.DoesNotExist:
+        return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Простая заглушка вместо LLM:
+    # позже здесь будет вызов модели, куда мы передадим profile + описание курса.
+    base = f"Курс '{course.title}'. Ваш стиль: {profile.learning_style}. "
+    if profile.learning_style in ['visual', 'mixed']:
+        details = "Делайте визуальные конспекты, используйте схемы и скриншоты."
+    elif profile.learning_style == 'auditory':
+        details = "Слушайте объяснения, проговаривайте вслух ключевые идеи."
+    elif profile.learning_style == 'read_write':
+        details = "Делайте подробные текстовые заметки и перечитывайте материалы."
+    else:
+        details = "Делайте упор на практические задания и проекты."
+
+    if profile.discipline_score and profile.discipline_score >= 8:
+        pace = "Можно идти в интенсивном темпе: занимайтесь каждый день небольшими блоками."
+    elif profile.discipline_score and profile.discipline_score >= 5:
+        pace = "Подойдёт умеренный темп: 3–4 занятия в неделю."
+    else:
+        pace = "Лучше медленный темп: маленькие, но регулярные шаги 2–3 раза в неделю."
+
+    strategy_text = base + " " + details + " " + pace
+
+    return Response({
+        "user_id": user.id,
+        "course_id": course.id,
+        "course_title": course.title,
+        "strategy": strategy_text
+    }, status=status.HTTP_200_OK)
 
