@@ -34,8 +34,9 @@ class UserProfile(models.Model):
     LEARNING_STYLES = [
         ('visual', 'Visual'),
         ('auditory', 'Auditory'),
-        ('reading', 'Reading/Writing'),
+        ('read_write', 'Read/Write'),
         ('kinesthetic', 'Kinesthetic'),
+        ('mixed', 'Mixed'),
     ]
 
     PACE_CHOICES = [
@@ -43,6 +44,49 @@ class UserProfile(models.Model):
         ('normal', 'Normal'),
         ('fast', 'Fast'),
     ]
+
+    FORMAT_CHOICES = [
+        ('video', 'Video'),
+        ('audio', 'Audio / Podcasts'),
+        ('text', 'Text'),
+        ('practice', 'Practice / Cases'),
+        ('mixed', 'Mixed'),
+    ]
+
+    user = models.OneToOneField('users.User', on_delete=models.CASCADE, related_name='profile')
+
+    # Результаты теста
+    learning_style = models.CharField(
+        max_length=20,
+        choices=LEARNING_STYLES,
+        default='mixed',
+    )
+    memory_score = models.IntegerField(null=True, blank=True)         # 1–10
+    discipline_score = models.IntegerField(null=True, blank=True)     # 1–10
+
+    # Рекомендации от LLM
+    recommended_format = models.CharField(
+        max_length=20,
+        choices=FORMAT_CHOICES,
+        default='mixed',
+    )
+    recommended_pace = models.CharField(
+        max_length=20,
+        choices=PACE_CHOICES,
+        default='normal',
+    )
+    strategy_summary = models.TextField(blank=True)  # текстовая стратегия обучения
+
+    # Базовые доп-поля (на будущее)
+    age = models.IntegerField(null=True, blank=True)
+    goals = models.TextField(blank=True)        # цели обучения (карьера/универ/хобби)
+    interests = models.TextField(blank=True)    # интересы/темы в свободной форме
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Profile of {self.user.username}"
 
     user = models.OneToOneField('users.User', on_delete=models.CASCADE, related_name='profile')
     age = models.IntegerField(null=True, blank=True)
