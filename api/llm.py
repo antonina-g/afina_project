@@ -3,6 +3,43 @@ from courses.models import UserProfile, Course
 import json
 from typing import Dict
 from courses.models import UserProfile, Course
+import requests
+from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
+
+# ← ВАШИ SYSTEM_PROMPT и build_user_prompt остаются
+
+def call_llm_for_strategy(profile, course):
+    """Приоритет: Ollama → stub"""
+    try:
+        return call_ollama(profile, course)
+    except Exception as e:
+        logger.error(f"Ollama error: {e}")
+        return call_llm_for_strategy_stub(profile, course)
+
+def call_ollama(profile, course):
+    """Вызов локальной Ollama"""
+    prompt = build_user_prompt(profile, course)
+    
+    response = requests.post(f"{settings.OLLAMA_URL}/api/chat", json={
+        "model": "llama3.2:1b",
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ],
+        "format": "json", 
+        "stream": False
+    })
+    
+    if response.status_code == 200:
+        content = response.json()['message']['content']
+        return json.loads(content)
+    else:
+        raise Exception(f"Ollama error: {response.status_code}")
+
+
 
 SYSTEM_PROMPT = """
 Ты — ассистент по обучению. Твоя задача — на основе профиля ученика и информации о конкретном курсе составить персональную стратегию прохождения именно этого курса.

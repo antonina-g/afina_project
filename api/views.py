@@ -9,7 +9,7 @@ from users.models import User
 from courses.models import Course, UserProfile
 from .llm import generate_learning_strategy_stub
 from .llm import call_llm_for_strategy_stub
-
+from api.llm import call_llm_for_strategy
 
 from courses.models import Course
 
@@ -577,3 +577,24 @@ def course_strategy(request):
     }, status=status.HTTP_200_OK)
 
 
+@api_view(['POST'])
+def test_llm_strategy(request):
+    """Тест LLM стратегии"""
+    try:
+        data = request.data
+        user_id = data.get('user_id')
+        course_id = data.get('course_id')
+        
+        profile = UserProfile.objects.get(user_id=user_id)
+        course = Course.objects.get(id=course_id)
+        
+        strategy = call_llm_for_strategy(profile, course)
+        return Response({
+            "status": "success",
+            "strategy": strategy
+        })
+    except Exception as e:
+        return Response({
+            "status": "error", 
+            "message": str(e)
+        }, status=400)

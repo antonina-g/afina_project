@@ -114,3 +114,8 @@ SIMPLE_JWT = {
 }
 
 AUTH_USER_MODEL = 'users.User'
+
+# LLM настройки для Afina
+LLM_MODE = "local"  # local / yandex
+OLLAMA_URL = "http://localhost:11434"
+
