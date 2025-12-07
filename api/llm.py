@@ -24,7 +24,7 @@ def call_ollama(profile, course):
     prompt = build_user_prompt(profile, course)
     
     response = requests.post(f"{settings.OLLAMA_URL}/api/chat", json={
-        "model": "llama3.2:1b",
+        "model": "qwen2.5:3b",
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt}

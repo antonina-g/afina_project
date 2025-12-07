@@ -6,12 +6,13 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from users.models import User
-from courses.models import Course, UserProfile
+from courses.models import Course, UserProfile, LearningStrategy
 from .llm import generate_learning_strategy_stub
 from .llm import call_llm_for_strategy_stub
 from api.llm import call_llm_for_strategy
 
-from courses.models import Course
+
+
 
 
 @api_view(['GET'])
@@ -235,9 +236,23 @@ def get_profile(request, user_id):
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
     try:
-        profile = user.profile  # related_name='profile'
+        # related_name='profile' в UserProfile
+        profile = user.profile
     except UserProfile.DoesNotExist:
         return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # все сохранённые стратегии для этого пользователя
+    strategies = LearningStrategy.objects.filter(user=user).select_related('course')
+    strategies_data = [
+        {
+            "course_id": s.course.id,
+            "course_title": s.course.title,
+            "created_at": s.created_at,
+            "summary": s.strategy_json.get("summary"),
+            "pace": s.strategy_json.get("pace"),
+        }
+        for s in strategies
+    ]
 
     return Response({
         'user_id': user.id,
@@ -250,6 +265,7 @@ def get_profile(request, user_id):
         'strategy_summary': profile.strategy_summary,
         'goals': profile.goals,
         'interests': profile.interests,
+        'strategies': strategies_data,  # новое поле
     })
 
 
@@ -534,47 +550,46 @@ def recommendations(request, user_id):
         'courses': response_courses,
     })
 
+
 @api_view(['POST'])
-@permission_classes([AllowAny])
 def course_strategy(request):
-    """
-    Генерирует стратегию обучения под конкретный курс
-    на основе профиля пользователя.
-    Пока без реального LLM — простая заглушка.
-    Ожидает JSON: { "user_id": 2, "course_id": 25 }
-    """
-    user_id = request.data.get('user_id')
-    course_id = request.data.get('course_id')
-
-    if not user_id or not course_id:
-        return Response(
-            {"error": "user_id and course_id are required"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
+    """Генерирует и сохраняет стратегию обучения"""
+    data = request.data
+    
     try:
-        user = User.objects.get(id=user_id)
-        profile = user.profile
-    except (User.DoesNotExist, UserProfile.DoesNotExist):
-        return Response({"error": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
-
-    try:
+       
+        user_id = data.get('user_id')
+        course_id = data.get('course_id')
+        
+        # Проверяем данные
+        profile = UserProfile.objects.get(user_id=user_id)
         course = Course.objects.get(id=course_id)
+        
+        # Генерируем стратегию
+        strategy_json = call_llm_for_strategy(profile, course)
+        
+        # Сохраняем
+        LearningStrategy.objects.update_or_create(
+            user_id=user_id,
+            course=course,
+            defaults={'strategy_json': strategy_json}
+        )
+        
+        return Response({
+            "status": "success",
+            "message": "Стратегия создана и сохранена!",
+            "user_id": user_id,
+            "course_title": course.title,
+            "strategy": strategy_json
+        })
+        
+    except UserProfile.DoesNotExist:
+        return Response({"error": f"Профиль user_id={user_id} не найден"}, status=404)
     except Course.DoesNotExist:
-        return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": f"Курс id={course_id} не найден"}, status=404)
+    except Exception as e:
+        return Response({"error": f"Ошибка: {str(e)}"}, status=500)
 
-    # Заглушка LLM: получаем структурированную стратегию
-    strategy_data = call_llm_for_strategy_stub(profile, course)
-
-    return Response({
-        "user_id": user.id,
-        "course_id": course.id,
-        "course_title": course.title,
-        "strategy": strategy_data["summary"],
-        "pace": strategy_data["pace"],
-        "format_tips": strategy_data["format_tips"],
-        "steps": strategy_data["steps"],
-    }, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
