@@ -6,7 +6,63 @@ from courses.models import UserProfile, Course
 import requests
 from django.conf import settings
 import logging
+# api/llm.py - добавьте эти импорты в начало, если их нет
+from django.utils import timezone
+from courses.models import LearningStrategy
+import json
 
+def generate_and_save_strategy(profile: UserProfile, course: Course) -> Dict:
+    """
+    Основная функция: генерирует стратегию через LLM и сохраняет в БД
+    """
+    try:
+        # 1. Генерируем стратегию через LLM
+        strategy_data = call_llm_for_strategy(profile, course)
+        
+        # 2. Сохраняем или обновляем стратегию в БД
+        strategy, created = LearningStrategy.objects.update_or_create(
+            user=profile,
+            course=course,
+            defaults={
+                'summary': strategy_data.get('summary', ''),
+                'pace': strategy_data.get('pace', ''),
+                'format_tips': strategy_data.get('format_tips', []),
+                'steps': strategy_data.get('steps', []),
+                'updated_at': timezone.now()
+            }
+        )
+        
+        logger.info(f"{'Created' if created else 'Updated'} strategy for user {profile.id} and course {course.id}")
+        
+        return {
+            "status": "success",
+            "strategy": strategy_data,
+            "created": created
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating strategy: {e}")
+        # В случае ошибки - возвращаем заглушку и сохраняем её
+        strategy_data = call_llm_for_strategy_stub(profile, course)
+        
+        strategy, created = LearningStrategy.objects.update_or_create(
+            user=profile,
+            course=course,
+            defaults={
+                'summary': strategy_data.get('summary', ''),
+                'pace': strategy_data.get('pace', ''),
+                'format_tips': strategy_data.get('format_tips', []),
+                'steps': strategy_data.get('steps', []),
+                'updated_at': timezone.now()
+            }
+        )
+        
+        return {
+            "status": "fallback",
+            "strategy": strategy_data,
+            "created": created,
+            "error": str(e)
+        }
 logger = logging.getLogger(__name__)
 
 # ← ВАШИ SYSTEM_PROMPT и build_user_prompt остаются

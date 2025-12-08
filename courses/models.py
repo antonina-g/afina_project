@@ -115,13 +115,21 @@ class CourseProgress(models.Model):
         return f"{self.user.username} - {self.course.title} ({self.progress_percent}%)"
 
 
+# courses/models.py - добавьте в конец файла или в соответствующее место
+
 class LearningStrategy(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    course = models.ForeignKey('Course', on_delete=models.CASCADE)
-    strategy_json = models.JSONField()
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='strategies')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='strategies')
+    summary = models.TextField(blank=True)
+    pace = models.TextField(blank=True)
+    format_tips = models.JSONField(default=list)  # Список строк
+    steps = models.JSONField(default=list)  # Список словарей с title, description, recommended_time
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         unique_together = ['user', 'course']
-        verbose_name = "Стратегия обучения"
+        verbose_name_plural = 'Learning Strategies'
+    
+    def __str__(self):
+        return f"Strategy for {self.user.user.username} - {self.course.title}"

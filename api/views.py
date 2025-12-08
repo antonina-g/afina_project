@@ -1,23 +1,18 @@
 import re
 import requests
+import logging
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from django.utils import timezone
+
 from users.models import User
 from courses.models import Course, UserProfile, LearningStrategy
-from .llm import generate_learning_strategy_stub
-from .llm import call_llm_for_strategy_stub
-from api.llm import call_llm_for_strategy
+from .llm import generate_learning_strategy_stub, call_llm_for_strategy_stub, call_llm_for_strategy
 
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
-
-
-
+logger = logging.getLogger(__name__)
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -240,20 +235,19 @@ def get_profile(request, user_id):
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
     try:
-        # related_name='profile' в UserProfile
         profile = user.profile
     except UserProfile.DoesNotExist:
         return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
 
     # все сохранённые стратегии для этого пользователя
-    strategies = LearningStrategy.objects.filter(user=user).select_related('course')
+    strategies = LearningStrategy.objects.filter(user=profile).select_related('course')  # Исправлено: user=profile
     strategies_data = [
         {
             "course_id": s.course.id,
             "course_title": s.course.title,
             "created_at": s.created_at,
-            "summary": s.strategy_json.get("summary"),
-            "pace": s.strategy_json.get("pace"),
+            "summary": s.strategy_json.get("summary") if s.strategy_json else None,
+            "pace": s.strategy_json.get("pace") if s.strategy_json else None,
         }
         for s in strategies
     ]
@@ -269,14 +263,13 @@ def get_profile(request, user_id):
         'strategy_summary': profile.strategy_summary,
         'goals': profile.goals,
         'interests': profile.interests,
-        'strategies': strategies_data,  # новое поле
+        'strategies': strategies_data,
     })
 
-
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])  # теперь только авторизованные
+@permission_classes([IsAuthenticated])
 def onboarding_answers(request):
-    user = request.user                    # ← берём реального пользователя из токена
+    user = request.user
     data = request.data
     answers = data.get('answers', {})
 
@@ -368,6 +361,66 @@ def onboarding_answers(request):
 
     profile.save()
 
+    # === ГЕНЕРАЦИЯ СТРАТЕГИЙ ДЛЯ РЕКОМЕНДОВАННЫХ КУРСОВ ===
+    strategies_generated = []
+    
+    try:
+        # Простой вариант: берем несколько популярных курсов
+        top_courses = Course.objects.filter(is_active=True)[:3]
+        
+        for course in top_courses:
+            try:
+                # Генерируем стратегию через LLM
+                strategy_data = call_llm_for_strategy(profile, course)
+                
+                # Сохраняем стратегию в БД
+                learning_strategy, created = LearningStrategy.objects.update_or_create(
+                    user=profile,  # Исправлено: user=profile, а не user_id
+                    course=course,
+                    defaults={
+                        'strategy_json': strategy_data,
+                        'updated_at': timezone.now()
+                    }
+                )
+                
+                strategies_generated.append({
+                    'course_id': course.id,
+                    'course_title': course.title,
+                    'status': 'success',
+                    'created': created,
+                    'strategy_summary': strategy_data.get('summary', '')[:100] + '...'
+                })
+                
+                logger.info(f"Generated strategy for user {user.id} and course {course.id}")
+                
+            except Exception as e:
+                logger.error(f"Error generating strategy for course {course.id}: {e}")
+                # В случае ошибки используем заглушку
+                strategy_data = call_llm_for_strategy_stub(profile, course)
+                
+                learning_strategy, created = LearningStrategy.objects.update_or_create(
+                    user=profile,
+                    course=course,
+                    defaults={
+                        'strategy_json': strategy_data,
+                        'updated_at': timezone.now()
+                    }
+                )
+                
+                strategies_generated.append({
+                    'course_id': course.id,
+                    'course_title': course.title,
+                    'status': 'fallback',
+                    'created': created,
+                    'strategy_summary': strategy_data.get('summary', '')[:100] + '...',
+                    'note': 'Использована заглушка из-за ошибки LLM'
+                })
+    
+    except Exception as e:
+        logger.error(f"Error in strategy generation: {e}")
+        strategies_generated = []
+
+    # Возвращаем ответ
     return Response({
         'message': 'Profile updated from onboarding answers',
         'profile': {
@@ -377,16 +430,16 @@ def onboarding_answers(request):
             'recommended_format': profile.recommended_format,
             'recommended_pace': profile.recommended_pace,
             'strategy_summary': profile.strategy_summary,
-        }
+        },
+        'strategies_generated': strategies_generated,
+        'strategies_count': len(strategies_generated)
     }, status=status.HTTP_200_OK)
 
-
 @api_view(['POST'])
-@permission_classes([AllowAny])  # позже можно сменить на IsAuthenticated
+@permission_classes([AllowAny])
 def add_user_course(request):
     """
-    Добавление курса по ссылке Stepik, с подтягиванием данных из Stepik API.
-    Ожидает JSON: {"stepik_url": "https://stepik.org/course/XXXXX/"}.
+    Добавление курса по ссылке Stepik.
     """
     url = request.data.get('stepik_url')
 
@@ -396,7 +449,6 @@ def add_user_course(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # Извлекаем ID из URL вида https://stepik.org/course/58852/
     match = re.search(r'stepik\.org/course/(\d+)', url)
     if not match:
         return Response(
@@ -406,7 +458,6 @@ def add_user_course(request):
 
     stepik_id = int(match.group(1))
 
-    # Если курс уже есть в БД — не дублируем
     if Course.objects.filter(stepik_id=stepik_id).exists():
         existing = Course.objects.get(stepik_id=stepik_id)
         return Response({
@@ -420,7 +471,6 @@ def add_user_course(request):
             }
         }, status=status.HTTP_200_OK)
 
-    # Тянем подробную информацию о курсе из Stepik API
     try:
         api_url = 'https://stepik.org/api/courses'
         resp = requests.get(api_url, params={'ids[]': stepik_id}, timeout=10)
@@ -439,7 +489,6 @@ def add_user_course(request):
             status=status.HTTP_502_BAD_GATEWAY
         )
 
-    # Извлекаем поля с дефолтами
     title = course_data.get('title') or f'Course #{stepik_id}'
     summary = course_data.get('summary') or ''
     description = course_data.get('description') or ''
@@ -447,7 +496,6 @@ def add_user_course(request):
     level = course_data.get('difficulty') or 'beginner'
     language = course_data.get('language') or 'ru'
 
-    # Создаём курс в нашей БД
     course = Course(
         stepik_id=stepik_id,
         title=title[:255],
@@ -472,7 +520,6 @@ def add_user_course(request):
         }
     }, status=status.HTTP_201_CREATED)
 
-
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def recommendations(request, user_id):
@@ -482,15 +529,12 @@ def recommendations(request, user_id):
     except (User.DoesNotExist, UserProfile.DoesNotExist):
         return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    # Берём все курсы
     qs = Course.objects.all()
-
     scored_courses = []
 
     for course in qs:
         score = 0
 
-        # 1. Совпадение формата с learning_style
         if profile.learning_style in ['visual', 'mixed']:
             if course.format_type in ['video', 'mixed']:
                 score += 3
@@ -504,20 +548,17 @@ def recommendations(request, user_id):
             if course.format_type in ['practice', 'mixed']:
                 score += 3
 
-        # 2. Небольшой бонус за простой уровень для низкой дисциплины
         if profile.discipline_score is not None and profile.discipline_score < 5:
             if str(course.level).lower() in ['easy', 'beginner', 'basic']:
                 score += 2
 
-        # 3. Бонус, если язык русский (можно потом привязать к профилю)
         if course.language == 'ru':
             score += 1
 
         scored_courses.append((score, course))
 
-    # Сортируем по убыванию score и берём топ-5
     scored_courses.sort(key=lambda x: x[0], reverse=True)
-    top = [c for s, c in scored_courses if s > 0][:5]  # только с положительным скором
+    top = [c for s, c in scored_courses if s > 0][:5]
 
     response_courses = [
         {
@@ -544,19 +585,20 @@ def recommendations(request, user_id):
         'courses': response_courses,
     })
 
-
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def course_strategy(request):
     """Генерирует и сохраняет стратегию обучения"""
     data = request.data
     
     try:
-       
-        user_id = data.get('user_id')
+        user = request.user
+        profile = user.profile
         course_id = data.get('course_id')
         
-        # Проверяем данные
-        profile = UserProfile.objects.get(user_id=user_id)
+        if not course_id:
+            return Response({"error": "course_id is required"}, status=400)
+        
         course = Course.objects.get(id=course_id)
         
         # Генерируем стратегию
@@ -564,7 +606,7 @@ def course_strategy(request):
         
         # Сохраняем
         LearningStrategy.objects.update_or_create(
-            user_id=user_id,
+            user=profile,  # Исправлено: user=profile
             course=course,
             defaults={'strategy_json': strategy_json}
         )
@@ -572,29 +614,32 @@ def course_strategy(request):
         return Response({
             "status": "success",
             "message": "Стратегия создана и сохранена!",
-            "user_id": user_id,
+            "user_id": user.id,
             "course_title": course.title,
             "strategy": strategy_json
         })
         
     except UserProfile.DoesNotExist:
-        return Response({"error": f"Профиль user_id={user_id} не найден"}, status=404)
+        return Response({"error": "Профиль не найден"}, status=404)
     except Course.DoesNotExist:
-        return Response({"error": f"Курс id={course_id} не найден"}, status=404)
+        return Response({"error": f"Курс id={data.get('course_id')} не найден"}, status=404)
     except Exception as e:
+        logger.error(f"Error in course_strategy: {e}")
         return Response({"error": f"Ошибка: {str(e)}"}, status=500)
 
-
-
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def test_llm_strategy(request):
     """Тест LLM стратегии"""
     try:
         data = request.data
-        user_id = data.get('user_id')
+        user = request.user
+        profile = user.profile
         course_id = data.get('course_id')
         
-        profile = UserProfile.objects.get(user_id=user_id)
+        if not course_id:
+            return Response({"error": "course_id is required"}, status=400)
+            
         course = Course.objects.get(id=course_id)
         
         strategy = call_llm_for_strategy(profile, course)
@@ -603,6 +648,7 @@ def test_llm_strategy(request):
             "strategy": strategy
         })
     except Exception as e:
+        logger.error(f"Error in test_llm_strategy: {e}")
         return Response({
             "status": "error", 
             "message": str(e)
