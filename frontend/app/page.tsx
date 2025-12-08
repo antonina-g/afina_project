@@ -36,7 +36,7 @@ export default function Home() {
   }, []);
 
   const handleStartOnboarding = () => {
-    window.location.href = "/onboarding";
+    window.location.href = "/register";
   };
 
   const handleGoToDashboard = () => {
@@ -69,7 +69,7 @@ export default function Home() {
                 onClick={handleStartOnboarding}
                 className="inline-flex items-center justify-center rounded-full bg-white px-7 py-2.5 text-sm font-medium text-slate-900 shadow-sm transition hover:bg-blue-50"
               >
-                Начать онбординг
+                Начать обучение
               </button>
               <button
                 onClick={handleGoToDashboard}

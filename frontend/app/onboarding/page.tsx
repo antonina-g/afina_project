@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 
@@ -19,9 +20,13 @@ export default function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const router = useRouter();
 
-  // временно захардкодим user_id, потом сделаем логин/регу
-  const userId = 1;
+  // Берём userId из localStorage (установлен при регистрации)
+  const userId =
+    typeof window !== "undefined"
+      ? Number(localStorage.getItem("userId"))
+      : null;
 
   useEffect(() => {
     async function fetchQuestions() {
@@ -51,16 +56,26 @@ export default function OnboardingPage() {
     setSubmitting(true);
 
     try {
+      // 1. Берём accessToken из localStorage (установлен при регистрации)
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("accessToken")
+          : null;
+
+      // 2. Формируем payload только с ответами (без user_id)
       const payload = {
-        user_id: userId,
         answers: Object.fromEntries(
           Object.entries(answers).map(([k, v]) => [k.toString(), v])
         ),
       };
 
+      // 3. Делаем запрос с Authorization в headers
       const res = await fetch(`${API_BASE_URL}/onboarding/answers/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
@@ -72,7 +87,13 @@ export default function OnboardingPage() {
       const data = await res.json();
       setSuccess("Профиль обновлён! Стратегия сгенерирована.");
       console.log("Onboarding result:", data);
-      // позже сделаем router.push(`/dashboard/${userId}`)
+
+      // 4. После успеха редиректим на дашборд
+      if (userId) {
+        setTimeout(() => {
+          router.push(`/dashboard/${userId}`);
+        }, 1500); // даём время на отображение success сообщения
+      }
     } catch (e: any) {
       setError(e.message || "Не удалось сохранить ответы");
     } finally {

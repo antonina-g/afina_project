@@ -11,6 +11,10 @@ from .llm import generate_learning_strategy_stub
 from .llm import call_llm_for_strategy_stub
 from api.llm import call_llm_for_strategy
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
 
 
 
@@ -270,34 +274,27 @@ def get_profile(request, user_id):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])  # позже можно завязать на авторизацию
+@permission_classes([IsAuthenticated])  # теперь только авторизованные
 def onboarding_answers(request):
+    user = request.user                    # ← берём реального пользователя из токена
     data = request.data
-    user_id = data.get('user_id')
     answers = data.get('answers', {})
 
-    if not user_id or not answers:
+    if not answers:
         return Response(
-            {'error': 'user_id and answers are required'},
+            {'error': 'answers are required'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-
-    # --- Шкала 1: Learning Style (по ответам a/b/c/d в вопросах 1–6) ---
+    # --- Шкала 1: Learning Style (1–6) ---
     style_counts = {'a': 0, 'b': 0, 'c': 0, 'd': 0}
-    for q in range(1, 7):  # вопросы 1–6
+    for q in range(1, 7):
         ans = answers.get(str(q))
         if ans in style_counts:
             style_counts[ans] += 1
 
-    # a=visual, b=auditory, c=read_write, d=kinesthetic
     max_style = max(style_counts, key=style_counts.get)
     counts = style_counts.values()
-    # проверка на mixed, если разница маленькая
     sorted_counts = sorted(counts, reverse=True)
     if len(sorted_counts) >= 2 and (sorted_counts[0] - sorted_counts[1] < 2):
         learning_style = 'mixed'
@@ -323,7 +320,7 @@ def onboarding_answers(request):
         return 0
 
     memory_scores = []
-    for q in range(7, 13):  # 7–12 включительно
+    for q in range(7, 13):
         ans = answers.get(str(q))
         if ans:
             memory_scores.append(score_letter(ans))
@@ -331,19 +328,19 @@ def onboarding_answers(request):
 
     # --- Шкала 3: Discipline Score (13–18) ---
     discipline_scores = []
-    for q in range(13, 19):  # 13–18 включительно
+    for q in range(13, 19):
         ans = answers.get(str(q))
         if ans:
             discipline_scores.append(score_letter(ans))
     discipline_score = round(sum(discipline_scores) / len(discipline_scores)) if discipline_scores else None
 
-    # --- Обновляем/создаём профиль пользователя ---
+    # --- Профиль пользователя ---
     profile, _ = UserProfile.objects.get_or_create(user=user)
     profile.learning_style = learning_style
     profile.memory_score = memory_score
     profile.discipline_score = discipline_score
 
-    # Пока без реального LLM — зашлём простые дефолты
+    # Рекомендации по формату
     if learning_style in ['visual', 'mixed']:
         profile.recommended_format = 'video'
     elif learning_style == 'auditory':
@@ -353,12 +350,10 @@ def onboarding_answers(request):
     else:
         profile.recommended_format = 'practice'
 
-    # темп по дисциплине
-        # --- Генерация стратегии (пока заглушка вместо LLM) ---
+    # Генерация стратегии (твоя функция-заглушка)
     strategy = generate_learning_strategy_stub(profile)
     profile.strategy_summary = strategy["summary"]
 
-    # обновим recommended_format по ключевым словам из текстового описания
     fmt = strategy["recommended_format"]
     if "video" in fmt:
         profile.recommended_format = "video"
@@ -384,7 +379,6 @@ def onboarding_answers(request):
             'strategy_summary': profile.strategy_summary,
         }
     }, status=status.HTTP_200_OK)
-
 
 
 @api_view(['POST'])

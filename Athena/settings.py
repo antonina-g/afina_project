@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'courses',
     'users',
     'api',
+    'rest_framework_simplejwt',
 ]
 
 MIDDLEWARE = [
