@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import UserProfile from "./components/UserProfile";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
@@ -17,8 +18,15 @@ export default function Home() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("accessToken")
+        : null;
+    setIsLoggedIn(!!token);
+
     async function fetchCourses() {
       try {
         const res = await fetch(`${API_BASE_URL}/courses/`);
@@ -36,15 +44,29 @@ export default function Home() {
   }, []);
 
   const handleStartOnboarding = () => {
-    window.location.href = "/register";
+    if (isLoggedIn) {
+      window.location.href = "/onboarding";
+    } else {
+      window.location.href = "/register";
+    }
   };
 
   const handleGoToDashboard = () => {
-    window.location.href = "/dashboard/4";
+    const userId = localStorage.getItem("userId");
+    window.location.href = `/dashboard/${userId}`;
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-zinc-50">
+      {/* Хедер */}
+      <header className="mx-auto max-w-6xl px-4 py-6 flex items-center justify-between border-b border-white/10">
+        <div>
+          <h1 className="text-xl font-bold text-white">Afina</h1>
+          <p className="text-xs text-gray-400">Персонализированное обучение</p>
+        </div>
+        <UserProfile />
+      </header>
+
       <main className="mx-auto max-w-6xl px-4 py-10 space-y-12">
         {/* Hero */}
         <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-500 to-fuchsia-600 px-6 py-12 shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:px-10">
@@ -69,14 +91,16 @@ export default function Home() {
                 onClick={handleStartOnboarding}
                 className="inline-flex items-center justify-center rounded-full bg-white px-7 py-2.5 text-sm font-medium text-slate-900 shadow-sm transition hover:bg-blue-50"
               >
-                Начать обучение
+                {isLoggedIn ? "Начать онбординг" : "Начать обучение"}
               </button>
-              <button
-                onClick={handleGoToDashboard}
-                className="inline-flex items-center justify-center rounded-full border border-white/40 px-7 py-2.5 text-sm font-medium text-white/95 backdrop-blur transition hover:bg-white/10"
-              >
-                Перейти к дашборду
-              </button>
+              {isLoggedIn && (
+                <button
+                  onClick={handleGoToDashboard}
+                  className="inline-flex items-center justify-center rounded-full border border-white/40 px-7 py-2.5 text-sm font-medium text-white/95 backdrop-blur transition hover:bg-white/10"
+                >
+                  Перейти к дашборду
+                </button>
+              )}
             </div>
           </div>
         </section>

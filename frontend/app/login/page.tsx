@@ -5,10 +5,9 @@ import { useRouter } from "next/navigation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 
-export default function RegisterPage() {
+export default function LoginPage() {
   const [formData, setFormData] = useState({
     username: "",
-    email: "",
     password: "",
   });
   const [loading, setLoading] = useState(false);
@@ -28,7 +27,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/register/`, {
+      const res = await fetch(`${API_BASE_URL}/auth/token/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -37,23 +36,24 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || data.username?.[0] || "Ошибка регистрации");
+        throw new Error(data.detail || "Неверные учётные данные");
       }
 
-      setSuccess("Регистрация успешна! Переводим на главную...");
-      
-      // Сохраняем токен и ID пользователя
-      localStorage.setItem("userId", String(data.id));
-      localStorage.setItem("accessToken", data.access);
-      localStorage.setItem("username", data.username); 
-      localStorage.setItem("email", data.email);       
+      setSuccess("Вход успешен! Переводим на главную...");
 
-      // Редиректим на ГЛАВНУЮ через 1 сек
+      // Сохраняем все данные в localStorage
+      localStorage.setItem("accessToken", data.access);
+      localStorage.setItem("refreshToken", data.refresh);
+      localStorage.setItem("userId", String(data.user_id));
+      localStorage.setItem("username", data.username);  // ← ДОБАВЬ
+      localStorage.setItem("email", data.email);        // ← ДОБАВЬ
+
+      // Редиректим на главную через 1 сек
       setTimeout(() => {
-        router.push("/");  // ← ИЗМЕНЕНО НА ГЛАВНУЮ
+        router.push("/");
       }, 1000);
     } catch (e: any) {
-      setError(e.message || "Не удалось зарегистрироваться");
+      setError(e.message || "Не удалось войти");
     } finally {
       setLoading(false);
     }
@@ -89,22 +89,7 @@ export default function RegisterPage() {
               onChange={handleChange}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
-              placeholder="Введите логин"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
-              placeholder="Введите email"
+              placeholder="Введи логин"
             />
           </div>
 
@@ -119,7 +104,7 @@ export default function RegisterPage() {
               onChange={handleChange}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
-              placeholder="Введите пароль"
+              placeholder="Введи пароль"
             />
           </div>
 
@@ -128,14 +113,14 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full bg-purple-600 text-white py-2 rounded-lg font-medium hover:bg-purple-700 transition disabled:opacity-60"
           >
-            {loading ? "Регистрируем..." : "Зарегистрироваться"}
+            {loading ? "Входим..." : "Войти"}
           </button>
         </form>
 
         <p className="text-center text-gray-600 text-sm mt-4">
-          Уже есть аккаунт?{" "}
-          <a href="/login" className="text-purple-600 hover:underline">
-            Войти
+          Нет аккаунта?{" "}
+          <a href="/register" className="text-purple-600 hover:underline">
+            Зарегистрироваться
           </a>
         </p>
       </div>
