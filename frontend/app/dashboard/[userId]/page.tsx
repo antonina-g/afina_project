@@ -83,34 +83,36 @@ export default function DashboardPage() {
 
   // 2) Грузим данные только когда userId уже есть
   useEffect(() => {
-    if (!userId) return
+    if (!userId) return;
 
     async function loadData() {
       try {
-        const profileRes = await fetchWithAuth(API_BASE_URL + 'profile/' + userId + '/')
-        if (!profileRes.ok) throw new Error(`Profile error: ${profileRes.status}`)
-        const profileData = await profileRes.json()
+        const url = API_BASE_URL + "profile/" + userId + "/";
+        console.log("PROFILE URL", url);
+        const profileRes = await fetchWithAuth(url);
+        console.log("PROFILE STATUS", profileRes.status);
 
-        if (!profileData.learningstyle) {
-          window.location.href = '/onboarding'
-          return
-        }
+        const profileData = await profileRes.json();
 
-        const recsRes = await fetchWithAuth(API_BASE_URL + 'recommendations/' + userId + '/')
-        if (!recsRes.ok) throw new Error(`Recommendations error: ${recsRes.status}`)
-        const recsData = await recsRes.json()
+        const recsRes = await fetchWithAuth(
+          API_BASE_URL + "recommendations/" + userId + "/"
+        );
+        console.log("RECS STATUS", recsRes.status);
+        const recsData = await recsRes.json();
 
-        setProfile(profileData)
-        setRecs(recsData)
+        setError(null);
+        setProfile(profileData);
+        setRecs(recsData);
       } catch (e: any) {
-        setError(e.message)
+        setError(e.message);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
-    loadData()
-  }, [userId])
+    loadData();
+  }, [userId]);
+
 
   const handleAddCourse = async () => {
     if (!stepikUrl || !userId) return

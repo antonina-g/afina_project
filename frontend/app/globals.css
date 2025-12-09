@@ -14,8 +14,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #020617; /* тёмный фон под Athena */
-    --foreground: #f9fafb; /* светлый текст */
+    --background: #020617; /* тёмный общий фон */
+    --foreground: #f9fafb;
   }
 }
 
@@ -25,7 +25,7 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ===== Скроллбар ===== */
+/* ======== СКРОЛЛБАР ======== */
 
 ::-webkit-scrollbar {
   width: 8px;
@@ -44,9 +44,72 @@ body {
   background: #475569;
 }
 
-/* ===== Анимации Athena: hero + лоадер ===== */
+/* ======================================
+   HERO: живой градиент + стеклянный блок
+   Используется во всех страницах с hero-animated-bg
+   ====================================== */
 
-/* Светящийся нижний бордер в hero */
+/* Живой, но лёгкий для браузера фон hero */
+.hero-animated-bg {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, #4f46e5, transparent 55%),
+    radial-gradient(circle at top right, #7c3aed, transparent 55%),
+    radial-gradient(circle at bottom left, #2563eb, transparent 55%),
+    radial-gradient(circle at bottom right, #ec4899, transparent 55%);
+  background-size: 160% 160%;
+  background-repeat: no-repeat;
+  animation: heroGradientMove 26s ease-in-out infinite;
+}
+
+/* Такой же живой фон можно повесить на вкладочные экраны (Курсы, Продукт и т.д.) */
+.tab-hero-bg {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, #4f46e5, transparent 55%),
+    radial-gradient(circle at top right, #7c3aed, transparent 55%),
+    radial-gradient(circle at bottom left, #2563eb, transparent 55%),
+    radial-gradient(circle at bottom right, #ec4899, transparent 55%);
+  background-size: 200% 200%;
+  background-repeat: no-repeat;
+  animation: heroGradientMove 32s ease-in-out infinite;
+}
+
+/* Плавно «плавающий» стеклянный блок в hero (добавляй класс hero-glass-blob) */
+.hero-glass-blob {
+  animation: heroBlobMove 22s ease-in-out infinite;
+}
+
+@keyframes heroGradientMove {
+  0% {
+    background-position: 0% 50%, 100% 0%, 0% 100%, 100% 50%;
+  }
+  50% {
+    background-position: 100% 50%, 0% 100%, 100% 0%, 0% 50%;
+  }
+  100% {
+    background-position: 0% 50%, 100% 0%, 0% 100%, 100% 50%;
+  }
+}
+
+@keyframes heroBlobMove {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(18px, -26px, 0) scale(1.04);
+  }
+  66% {
+    transform: translate3d(-14px, 22px, 0) scale(0.98);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* Светящийся нижний бордер в hero (класс animate-[heroGlow...]) */
 @keyframes heroGlow {
   0%,
   100% {
@@ -59,7 +122,8 @@ body {
   }
 }
 
-/* Три точки‑лоадера в кнопках */
+/* ======== ТРИ ТОЧКИ В КНОПКЕ ======== */
+
 .dot-loader {
   width: 4px;
   height: 4px;
@@ -86,4 +150,283 @@ body {
     transform: translateY(-2px);
     opacity: 1;
   }
+}
+
+/* ======== ОБЩИЙ ВЫЕЗД СЕКЦИЙ (benefits, курсы, продукт и т.п.) ======== */
+
+@keyframes sectionFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* можно вешать прямо: className="animate-sectionFadeIn" */
+.animate-sectionFadeIn {
+  animation: sectionFadeIn 700ms ease-out forwards;
+}
+
+/* ======== КАРТОЧКИ МАРШРУТА В HERO (лёгкое покачивание) ======== */
+
+@keyframes cardDrift {
+  0% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(1deg);
+  }
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+}
+
+.card-drift {
+  animation: cardDrift 6000ms ease-in-out infinite;
+}
+
+.card-drift-delay-1 {
+  animation-delay: 1.2s;
+}
+
+.card-drift-delay-2 {
+  animation-delay: 2.4s;
+}
+
+/* ======================================
+   LIQUID GLASS (эпловский стиль) ДЛЯ КАРТОЧЕК / ТАБОВ
+   ====================================== */
+
+.glass-card {
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.75),
+    rgba(30, 64, 175, 0.55)
+  );
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.85),
+    0 0 0 1px rgba(148, 163, 184, 0.08);
+  backdrop-filter: blur(26px);
+  -webkit-backdrop-filter: blur(26px);
+}
+
+/* круглые мягкие иконки внутри карточек/таборов */
+.icon-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.4rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  background: radial-gradient(circle at 30% 20%, #e5e7eb, #9ca3af 40%, #4b5563);
+  box-shadow:
+    0 8px 20px rgba(15, 23, 42, 0.7),
+    0 0 0 1px rgba(148, 163, 184, 0.4);
+  color: #020617;
+}
+
+/* активная иконка во вкладках (слегка подсвечена) */
+.icon-pill-active {
+  background: radial-gradient(circle at 20% 10%, #f9fafb, #bae6fd 35%, #38bdf8);
+  box-shadow:
+    0 10px 26px rgba(56, 189, 248, 0.6),
+    0 0 0 1px rgba(125, 211, 252, 0.9);
+}
+
+/* ======================================
+   ОНБОРДИНГ: карточки ответов, шаги, прогресс
+   ====================================== */
+
+/* Карточки ответов (input + label) с зелёной подсветкой выбора */
+.quiz-option-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.quiz-option-card {
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+  border-radius: 18px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.quiz-option-input:checked + .quiz-option-card {
+  background: linear-gradient(
+    135deg,
+    rgba(22, 163, 74, 0.18),
+    rgba(34, 197, 94, 0.09)
+  );
+  border-color: rgb(34, 197, 94);
+  box-shadow:
+    0 0 0 1px rgba(34, 197, 94, 0.7),
+    0 12px 30px rgba(22, 163, 74, 0.65);
+  transform: translateY(-1px);
+}
+
+/* Плавное появление шага онбординга (оборачивай шаг в класс onboarding-step) */
+@keyframes onboardingStepIn {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.onboarding-step {
+  animation: onboardingStepIn 260ms ease-out;
+}
+
+/* Индикатор прогресса онбординга (полоска, которая плавно меняет ширину) */
+.onboarding-progress {
+  transition: width 0.25s ease-out, background-color 0.25s ease-out;
+}
+
+/* ======================================
+   ТАБЫ В ВКЛАДКАХ (Продукт / Курсы / ИИ‑стратегия и т.п.)
+   ====================================== */
+
+.tabs-root {
+  position: relative;
+}
+
+/* активный таб выглядит «стеклянным» */
+.tabs-item-active {
+  color: #e5e7eb;
+}
+
+/* подчёркивание, которое двигаешь через inline-style left/width */
+.tabs-underline {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #38bdf8, #a855f7);
+  transition: left 0.24s ease, width 0.24s ease;
+}
+.hero-animated-bg {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, #4f46e5, transparent 55%),
+    radial-gradient(circle at top right, #7c3aed, transparent 55%),
+    radial-gradient(circle at bottom left, #2563eb, transparent 55%),
+    radial-gradient(circle at bottom right, #ec4899, transparent 55%);
+  background-size: 160% 160%;
+  background-repeat: no-repeat;
+  animation: heroGradientMove 26s ease-in-out infinite;
+}
+
+@keyframes heroGradientMove {
+  0% {
+    background-position: 0% 50%, 100% 0%, 0% 100%, 100% 50%;
+  }
+  50% {
+    background-position: 100% 50%, 0% 100%, 100% 0%, 0% 50%;
+  }
+  100% {
+    background-position: 0% 50%, 100% 0%, 0% 100%, 100% 50%;
+  }
+}
+/* Дополнительные анимации для product страницы */
+.animate-pulse-slow {
+  animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.perspective-\[1400px\] {
+  perspective: 1400px;
+}
+
+/* Улучшенный hero для product */
+.product-hero-glow {
+  box-shadow: 
+    0 0 0 1px rgba(255,255,255,0.1),
+    0 40px 120px rgba(15,23,42,0.8),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+}
+/* ===== ИИ‑панель: дополнительные эффекты ===== */
+
+/* лёгкий zoom+fade для смены текста справа */
+@keyframes aiPanelZoomIn {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.ai-panel-zoom {
+  animation: aiPanelZoomIn 420ms ease-out;
+}
+
+/* «дышащая» сетка нейросети */
+@keyframes aiGridDrift {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate3d(-10px, -6px, 0);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.4;
+  }
+}
+
+.ai-grid {
+  animation: aiGridDrift 22s ease-in-out infinite;
+}
+
+/* бегущий сигнал по линиям связи */
+@keyframes aiSignal {
+  0% {
+    transform: translateX(-10%);
+    opacity: 0;
+  }
+  50% {
+    transform: translateX(50%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+}
+
+.ai-signal {
+  position: absolute;
+  top: -2px;
+  left: 0;
+  height: 4px;
+  width: 24px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #22c55e, #38bdf8);
+  filter: blur(1px);
+  animation: aiSignal 3.4s linear infinite;
+}
+
+/* чуть более сильный неоновый glow узлов */
+.ai-node-glow {
+  box-shadow:
+    0 0 0 1px rgba(52, 211, 153, 0.9),
+    0 0 18px rgba(16, 185, 129, 0.8),
+    0 20px 40px rgba(15, 23, 42, 0.85);
 }
