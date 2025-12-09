@@ -14,6 +14,25 @@ from .llm import generate_learning_strategy_stub, call_llm_for_strategy_stub, ca
 
 logger = logging.getLogger(__name__)
 
+STEPIC_API_URL = "https://stepik.org/api"
+
+
+def fetch_stepik_course_title(stepik_id: int) -> str:
+    """
+    По stepik_id получает нормальное название курса через Stepik API.
+    Если что-то пошло не так — возвращает заглушку.
+    """
+    try:
+        resp = requests.get(f"{STEPIC_API_URL}/courses/{stepik_id}")
+        resp.raise_for_status()
+        data = resp.json()
+        courses = data.get("courses", [])
+        if courses:
+            return courses[0].get("title") or f"Stepik course {stepik_id}"
+    except Exception as e:
+        logger.error(f"Error fetching Stepik course title {stepik_id}: {e}")
+    return f"Stepik course {stepik_id}"
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def course_list(request):
@@ -462,7 +481,6 @@ def add_user_course(request):
     # Пример: https://stepik.org/course/59426/syllabus -> 59426
     try:
         parts = stepik_url.rstrip('/').split('/')
-        # найдем первое число в хвосте URL
         stepik_id = None
         for part in parts:
             if part.isdigit():
@@ -475,10 +493,13 @@ def add_user_course(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    # Берём нормальное название курса через Stepik API
+    course_title = fetch_stepik_course_title(stepik_id)
+
     course, created = Course.objects.get_or_create(
         stepik_id=stepik_id,
         defaults={
-            "title": f"Stepik course {stepik_id}",
+            "title": course_title,
             "description": "",
             "level": "beginner",
             "language": "ru",
