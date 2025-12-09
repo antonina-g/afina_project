@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 
-const API_BASE_URL = "http://localhost:8000/api"; // при необходимости поменяй
+const API_BASE_URL = "http://localhost:8000/api";
 
 type Profile = {
   learningstyle?: string;
@@ -90,16 +90,17 @@ const DashboardPage: React.FC = () => {
       }
       const profileData = await resProfile.json();
 
+      // ВАЖНО: здесь используются имена полей из views.get_profile
       setProfile({
-        learningstyle: profileData.learning_style,
-        memoryscore: profileData.memory_score,
-        disciplinescore: profileData.discipline_score,
-        recommendedformat: profileData.recommended_format,
-        recommendedpace: profileData.recommended_pace,
-        strategysummary: profileData.strategy_summary,
+        learningstyle: profileData.learningstyle,
+        memoryscore: profileData.memoryscore,
+        disciplinescore: profileData.disciplinescore,
+        recommendedformat: profileData.recommendedformat,
+        recommendedpace: profileData.recommendedpace,
+        strategysummary: profileData.strategysummary,
       });
 
-      // Рекомендации (в т.ч. курсы, возможно стратегии)
+      // Рекомендации (курсы + возможные стратегии)
       const resRecs = await fetch(
         `${API_BASE_URL}/recommendations/${userId}/`,
         {
@@ -116,7 +117,6 @@ const DashboardPage: React.FC = () => {
       if (recsData.strategies) {
         setStrategies(recsData.strategies);
       } else {
-        // Если recommendations стратегий не отдает, запрашиваем отдельно
         const resStrategies = await fetch(
           `${API_BASE_URL}/users/${userId}/strategies/`,
           {
@@ -191,14 +191,14 @@ const DashboardPage: React.FC = () => {
         }
       );
 
-      if (!resStrategy.ok) {
+           if (!resStrategy.ok) {
         const err = await resStrategy.json().catch(() => ({}));
         throw new Error(err.error || "Ошибка генерации стратегии");
       }
 
-      await resStrategy.json(); // если нужно, можно использовать ответ
+      await resStrategy.json();
 
-            // 3. Обновляем дашборд
+      // 3. Обновляем дашборд
       await fetchDashboardData();
       setStepikUrl("");
     } catch (e: any) {
@@ -220,9 +220,7 @@ const DashboardPage: React.FC = () => {
         <header className="space-y-2">
           <div className="text-sm text-slate-400">ID: {userId}</div>
           <h1 className="text-3xl font-bold">Афина</h1>
-          <p className="text-slate-400">
-            Ваш персонализированный дашборд.
-          </p>
+          <p className="text-slate-400">Ваш персонализированный дашборд.</p>
         </header>
 
         {error && (
@@ -265,12 +263,8 @@ const DashboardPage: React.FC = () => {
             {profile ? (
               <ul className="text-sm text-slate-300 space-y-1">
                 <li>Стиль: {profile.learningstyle ?? "-"}</li>
-                <li>
-                  Память: {profile.memoryscore ?? "-"} / 10
-                </li>
-                <li>
-                  Дисциплина: {profile.disciplinescore ?? "-"} / 10
-                </li>
+                <li>Память: {profile.memoryscore ?? "-"} / 10</li>
+                <li>Дисциплина: {profile.disciplinescore ?? "-"} / 10</li>
                 <li>Формат: {profile.recommendedformat ?? "-"}</li>
                 <li>Темп: {profile.recommendedpace ?? "-"}</li>
               </ul>
@@ -300,6 +294,7 @@ const DashboardPage: React.FC = () => {
             )}
           </section>
         </div>
+
 
         {/* Ваши стратегии */}
         <section className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 space-y-4">
