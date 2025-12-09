@@ -26,17 +26,19 @@ export default function UserProfile() {
     }
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("userId");
-    localStorage.removeItem("username");
-    localStorage.removeItem("email");
+const handleLogout = () => {
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("userId");
+  localStorage.removeItem("username");
+  localStorage.removeItem("email");
 
-    setIsLoggedIn(false);
-    setShowDropdown(false);
-    router.push("/");
-  };
+  setIsLoggedIn(false);
+  setShowDropdown(false);
+
+  router.push("/login");   // можно "/" если хотите
+  router.refresh();        // обновить страницу
+};
 
   if (!isLoggedIn) {
     return null;

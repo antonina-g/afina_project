@@ -20,6 +20,7 @@ export default function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isAuth, setIsAuth] = useState<boolean | null>(null);
   const router = useRouter();
 
   // Берём userId из localStorage (установлен при регистрации)
@@ -29,21 +30,34 @@ export default function OnboardingPage() {
       : null;
 
   useEffect(() => {
-    async function fetchQuestions() {
-      try {
-        const res = await fetch(`${API_BASE_URL}/onboarding/questions/`);
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
-        const data = await res.json();
-        setQuestions(data.questions || []);
-      } catch (e: any) {
-        setError(e.message || "Не удалось загрузить вопросы");
-      } finally {
-        setLoading(false);
-      }
-    }
+  if (typeof window === "undefined") return;
 
-    fetchQuestions();
-  }, []);
+  const token = localStorage.getItem("accessToken");
+  const storedUserId = localStorage.getItem("userId");
+
+  if (!token || !storedUserId) {
+    setIsAuth(false);
+    router.push("/login");     // неавторизованных уводим на логин
+    return;
+  }
+
+  setIsAuth(true);
+
+  async function fetchQuestions() {
+    try {
+      const res = await fetch(`${API_BASE_URL}/onboarding/questions/`);
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data = await res.json();
+      setQuestions(data.questions || []);
+    } catch (e: any) {
+      setError(e.message || "Не удалось загрузить вопросы");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  fetchQuestions();
+}, [router]);
 
   const handleChange = (qid: number, value: string) => {
     setAnswers((prev) => ({ ...prev, [qid]: value }));
@@ -100,6 +114,15 @@ export default function OnboardingPage() {
       setSubmitting(false);
     }
   };
+
+    if (isAuth === null) {
+    return <p className="p-4">Проверяем доступ...</p>;
+  }
+
+  if (isAuth === false) {
+    return null; // или тут можно показать текст "нужно войти"
+  }
+
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
