@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import UserProfile from "./components/UserProfile";
-import { useInView } from "./components/useInView.ts";
+import { useInView } from "./components/useInView";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";

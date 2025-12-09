@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -37,21 +38,19 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || data.username?.[0] || "Ошибка регистрации");
+        throw new Error(
+          data.error || data.username?.[0] || "Ошибка регистрации"
+        );
       }
 
-      setSuccess("Регистрация успешна! Переводим на главную...");
-      
-      // Сохраняем токен и ID пользователя
-      localStorage.setItem("userId", String(data.user_id));
-      localStorage.setItem("accessToken", data.access);
-      localStorage.setItem("username", data.username); 
-      localStorage.setItem("email", data.email);       
+      console.log("REGISTER RESPONSE", data);
 
-      // Редиректим на ГЛАВНУЮ через 1 сек
+      // НИЧЕГО не сохраняем в localStorage здесь
+      setSuccess("Регистрация успешна! Сейчас перейдём на вход...");
+
       setTimeout(() => {
-        router.push("/");  // ← ИЗМЕНЕНО НА ГЛАВНУЮ
-      }, 1000);
+        router.push("/login");
+      }, 800);
     } catch (e: any) {
       setError(e.message || "Не удалось зарегистрироваться");
     } finally {
@@ -62,8 +61,12 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 to-purple-800 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-center mb-2 text-purple-900">Afina</h1>
-        <p className="text-center text-gray-600 mb-6">Персонализированное обучение</p>
+        <h1 className="text-3xl font-bold text-center mb-2 text-purple-900">
+          Afina
+        </h1>
+        <p className="text-center text-gray-600 mb-6">
+          Персонализированное обучение
+        </p>
 
         {error && (
           <div className="mb-4 p-3 rounded bg-red-50 text-red-700 text-sm">
@@ -142,3 +145,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+

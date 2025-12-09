@@ -1,270 +1,392 @@
-'use client'
-import { useEffect, useState } from 'react'
+"use client";
 
-const API_BASE_URL = process.env.NEXTPUBLIC_API_BASE_URL ?? 'http://localhost:8000/api/'
+import React, { useEffect, useState } from "react";
 
-type StrategyItem = {
-  courseid: number
-  coursetitle: string
-  createdat: string
-  summary?: string
-  pace?: string
-}
+const API_BASE_URL = "http://localhost:8000/api"; // при необходимости поменяй
 
-type ProfileResponse = {
-  userid: number
-  username: string
-  learningstyle: string | null
-  memoryscore: number | null
-  disciplinescore: number | null
-  recommendedformat: string | null
-  recommendedpace: string | null
-  strategysummary: string
-  goals: string
-  interests: string
-  strategies: StrategyItem[]
-}
+type Profile = {
+  learningstyle?: string;
+  memoryscore?: number;
+  disciplinescore?: number;
+  recommendedformat?: string;
+  recommendedpace?: string;
+  strategysummary?: string;
+};
 
-type RecommendationCourse = {
-  id: number
-  title: string
-  level: string
-  language: string
-  formattype: string
-  url: string
-}
+type StrategyStep = {
+  title: string;
+  description: string;
+  recommended_time?: number;
+};
+
+type Strategy = {
+  id: number;
+  course: {
+    id: number;
+    title: string;
+    level: string;
+    url: string;
+  };
+  summary: string;
+  pace: string;
+  format_tips: string[];
+  steps: StrategyStep[];
+  created_at: string;
+  updated_at: string;
+};
+
+type RecommendedCourse = {
+  id: number;
+  title: string;
+  level: string;
+  language: string;
+  formattype: string;
+};
 
 type RecommendationsResponse = {
-  userid: number
-  profile: {
-    learningstyle: string | null
-    memoryscore: number | null
-    disciplinescore: number | null
-    recommendedformat: string | null
-    recommendedpace: string | null
-    strategysummary: string
-  }
-  courses: RecommendationCourse[]
-}
+  strategies?: Strategy[];
+  courses?: RecommendedCourse[];
+};
 
-export default function DashboardPage() {
-  const [userId, setUserId] = useState<string | null>(null)
-  const [profile, setProfile] = useState<ProfileResponse | null>(null)
-  const [recs, setRecs] = useState<RecommendationsResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+const DashboardPage: React.FC = () => {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const [recommendedCourses, setRecommendedCourses] = useState<
+    RecommendedCourse[]
+  >([]);
+  const [stepikUrl, setStepikUrl] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadingStrategy, setLoadingStrategy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [stepikUrl, setStepikUrl] = useState('')
-  const [addingCourse, setAddingCourse] = useState(false)
+  const userId =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("userId")
+      : null;
+  const accessToken =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("accessToken")
+      : null;
 
-  const fetchWithAuth = async (url: string) => {
-    const token = localStorage.getItem('accessToken')
-    if (!token) throw new Error('No token')
-
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    if (res.status === 401) {
-      window.location.href = '/login'
-      throw new Error('Unauthorized')
+  const fetchDashboardData = async () => {
+    if (!userId || !accessToken) {
+      setError("Нет userId или токена. Перезайдите в систему.");
+      setLoading(false);
+      return;
     }
-    return res
-  }
-
-  // 1) Берём userId из localStorage один раз
-  useEffect(() => {
-    const storedId = localStorage.getItem('userId')
-    if (!storedId) {
-      window.location.href = '/login'
-      return
-    }
-    setUserId(storedId)
-  }, [])
-
-  // 2) Грузим данные только когда userId уже есть
-  useEffect(() => {
-    if (!userId) return;
-
-    async function loadData() {
-      try {
-        const url = API_BASE_URL + "profile/" + userId + "/";
-        console.log("PROFILE URL", url);
-        const profileRes = await fetchWithAuth(url);
-        console.log("PROFILE STATUS", profileRes.status);
-
-        const profileData = await profileRes.json();
-
-        const recsRes = await fetchWithAuth(
-          API_BASE_URL + "recommendations/" + userId + "/"
-        );
-        console.log("RECS STATUS", recsRes.status);
-        const recsData = await recsRes.json();
-
-        setError(null);
-        setProfile(profileData);
-        setRecs(recsData);
-      } catch (e: any) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadData();
-  }, [userId]);
-
-
-  const handleAddCourse = async () => {
-    if (!stepikUrl || !userId) return
-    setAddingCourse(true)
 
     try {
-      const token = localStorage.getItem('accessToken')
+      setError(null);
+      setLoading(true);
 
-      const courseRes = await fetch(API_BASE_URL + 'add-course/', {
-        method: 'POST',
+      // Профиль
+      const resProfile = await fetch(`${API_BASE_URL}/profile/${userId}/`, {
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token!}`
+          Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ stepik_url: stepikUrl })
-      })
+      });
+      if (!resProfile.ok) {
+        throw new Error("Ошибка загрузки профиля");
+      }
+      const profileData = await resProfile.json();
 
-      if (!courseRes.ok) throw new Error('Failed to add course')
-      const courseData = await courseRes.json()
-      const courseId = courseData.course?.id || courseData.course_id
-      if (!courseId) throw new Error('No course ID received')
+      setProfile({
+        learningstyle: profileData.learning_style,
+        memoryscore: profileData.memory_score,
+        disciplinescore: profileData.discipline_score,
+        recommendedformat: profileData.recommended_format,
+        recommendedpace: profileData.recommended_pace,
+        strategysummary: profileData.strategy_summary,
+      });
 
-      const strategyRes = await fetch(
-        API_BASE_URL + `users/${userId}/strategies/generate/`,
+      // Рекомендации (в т.ч. курсы, возможно стратегии)
+      const resRecs = await fetch(
+        `${API_BASE_URL}/recommendations/${userId}/`,
         {
-          method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ course_id: courseId })
         }
-      )
+      );
+      if (!resRecs.ok) {
+        throw new Error("Ошибка загрузки рекомендаций");
+      }
+      const recsData: RecommendationsResponse = await resRecs.json();
 
-      if (!strategyRes.ok) throw new Error('Failed to generate strategy')
+      if (recsData.strategies) {
+        setStrategies(recsData.strategies);
+      } else {
+        // Если recommendations стратегий не отдает, запрашиваем отдельно
+        const resStrategies = await fetch(
+          `${API_BASE_URL}/users/${userId}/strategies/`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+        if (resStrategies.ok) {
+          const sData = await resStrategies.json();
+          setStrategies(sData.strategies || []);
+        } else {
+          setStrategies([]);
+        }
+      }
 
-      window.location.reload()
+      setRecommendedCourses(recsData.courses || []);
     } catch (e: any) {
-      alert('Ошибка: ' + e.message)
+      setError(e.message || "Ошибка загрузки дашборда");
     } finally {
-      setAddingCourse(false)
-      setStepikUrl('')
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleAddStrategy = async () => {
+    if (!userId || !accessToken) {
+      setError("Нет userId или токена.");
+      return;
+    }
+    if (!stepikUrl) {
+      setError("Введите ссылку на курс Stepik.");
+      return;
+    }
+
+    try {
+      setError(null);
+      setLoadingStrategy(true);
+
+      // 1. Создаем/находим курс
+      const resCourse = await fetch(`${API_BASE_URL}/add-course/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ stepik_url: stepikUrl }),
+      });
+
+      if (!resCourse.ok) {
+        const err = await resCourse.json().catch(() => ({}));
+        throw new Error(err.error || "Ошибка добавления курса");
+      }
+
+      const courseData = await resCourse.json();
+      const courseId = courseData.course.id;
+
+      // 2. Генерируем стратегию
+      const resStrategy = await fetch(
+        `${API_BASE_URL}/users/${userId}/strategies/generate/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ course_id: courseId }),
+        }
+      );
+
+      if (!resStrategy.ok) {
+        const err = await resStrategy.json().catch(() => ({}));
+        throw new Error(err.error || "Ошибка генерации стратегии");
+      }
+
+      await resStrategy.json(); // если нужно, можно использовать ответ
+
+            // 3. Обновляем дашборд
+      await fetchDashboardData();
+      setStepikUrl("");
+    } catch (e: any) {
+      setError(e.message || "Ошибка при добавлении стратегии");
+    } finally {
+      setLoadingStrategy(false);
+    }
+  };
+
+  const activeStrategy = strategies[0] || null;
+
+  if (loading && !profile) {
+    return <div className="text-white p-8">Загрузка дашборда...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-zinc-50">
-      <main className="mx-auto max-w-6xl px-4 py-10 space-y-8">
+    <main className="min-h-screen bg-slate-950 text-slate-50 p-8">
+      <div className="max-w-5xl mx-auto space-y-8">
         <header className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.25em] text-zinc-500">ID: {userId}</p>
-          <h1 className="text-3xl font-semibold">Афина</h1>
-          <p className="text-sm text-zinc-400">Ваш персонализированный дашборд</p>
+          <div className="text-sm text-slate-400">ID: {userId}</div>
+          <h1 className="text-3xl font-bold">Афина</h1>
+          <p className="text-slate-400">
+            Ваш персонализированный дашборд.
+          </p>
         </header>
 
-        {loading && <p className="text-sm text-zinc-300">Загрузка дашборда...</p>}
         {error && (
-          <p className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          <div className="bg-red-900/40 border border-red-500 text-red-100 px-4 py-2 rounded">
             {error}
-          </p>
+          </div>
         )}
 
-        {/* ➕ НОВЫЙ БЛОК: Добавить курс */}
-        <section className="rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-lg">
-          <h2 className="mb-3 text-sm font-semibold text-zinc-100">➕ Добавить курс Stepik</h2>
-          <div className="flex gap-2">
+        {/* ➕ Добавить курс Stepik */}
+        <section className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <span className="text-xl">➕</span> Добавить курс Stepik
+          </h2>
+          <p className="text-sm text-slate-400">
+            Введите ссылку на курс Stepik → курс сохранится в базе → будет
+            сгенерирована персональная стратегия.
+          </p>
+          <div className="flex gap-3">
             <input
-              type="url"
+              className="flex-1 rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm outline-none focus:border-sky-500"
+              type="text"
               value={stepikUrl}
               onChange={(e) => setStepikUrl(e.target.value)}
               placeholder="https://stepik.org/course/59426/syllabus"
-              className="flex-1 p-2 border border-white/20 bg-slate-950 rounded-xl text-sm focus:outline-none focus:border-blue-400"
-              disabled={addingCourse}
             />
             <button
-              onClick={handleAddCourse}
-              disabled={!stepikUrl || addingCourse}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-400 text-white rounded-xl text-sm font-medium disabled:cursor-not-allowed"
+              onClick={handleAddStrategy}
+              disabled={loadingStrategy}
+              className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:bg-slate-700 text-sm font-medium"
             >
-              {addingCourse ? 'Генерируем...' : 'Добавить + стратегия'}
+              {loadingStrategy ? "Генерируем..." : "Добавить + стратегия"}
             </button>
           </div>
-          <p className="mt-2 text-xs text-zinc-400">
-            Введите ссылку → парсинг → персональная стратегия
-          </p>
         </section>
 
-        {!loading && !error && profile && (
-          <>
-            {/* Профиль */}
-            <section className="grid gap-6 md:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-lg">
-                <h2 className="mb-3 text-sm font-semibold text-zinc-100">Профиль обучения</h2>
-                <ul className="space-y-1 text-xs text-zinc-200">
-                  <li>Стиль: <span className="font-medium">{profile.learningstyle ?? '-'}</span></li>
-                  <li>Память: <span className="font-medium">{profile.memoryscore ?? '-'} / 10</span></li>
-                  <li>Дисциплина: <span className="font-medium">{profile.disciplinescore ?? '-'} / 10</span></li>
-                  <li>Формат: <span className="font-medium">{profile.recommendedformat ?? '-'}</span></li>
-                  <li>Темп: <span className="font-medium">{profile.recommendedpace ?? '-'}</span></li>
-                </ul>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-lg">
-                <h2 className="mb-3 text-sm font-semibold text-zinc-100">Рекомендации LLM</h2>
-                <p className="text-xs leading-relaxed text-zinc-200 whitespace-pre-line">
-                  {profile.strategysummary || 'Нет рекомендаций'}
-                </p>
-              </div>
-            </section>
-
-            {/* Стратегии */}
-            {profile.strategies.length > 0 && (
-              <section className="rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-lg">
-                <h2 className="mb-3 text-sm font-semibold text-zinc-100">
-                  Ваши стратегии ({profile.strategies.length})
-                </h2>
-                <ul className="space-y-3 text-xs text-zinc-200">
-                  {profile.strategies.map((s) => (
-                    <li key={`${s.courseid}-${s.createdat}`} className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
-                      <div className="text-sm font-medium text-zinc-50">{s.coursetitle}</div>
-                      {s.summary && <p className="mt-1 text-xs text-zinc-200">{s.summary}</p>}
-                      {s.pace && <p className="mt-1 text-xs text-zinc-400">Темп: {s.pace}</p>}
-                    </li>
-                  ))}
-                </ul>
-              </section>
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Профиль обучения */}
+          <section className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 space-y-2">
+            <h2 className="text-lg font-semibold">Профиль обучения</h2>
+            {profile ? (
+              <ul className="text-sm text-slate-300 space-y-1">
+                <li>Стиль: {profile.learningstyle ?? "-"}</li>
+                <li>
+                  Память: {profile.memoryscore ?? "-"} / 10
+                </li>
+                <li>
+                  Дисциплина: {profile.disciplinescore ?? "-"} / 10
+                </li>
+                <li>Формат: {profile.recommendedformat ?? "-"}</li>
+                <li>Темп: {profile.recommendedpace ?? "-"}</li>
+              </ul>
+            ) : (
+              <p className="text-sm text-slate-400">
+                Профиль не найден. Пройдите онбординг.
+              </p>
             )}
+          </section>
 
-            {/* Рекомендации */}
-            {recs && recs.courses.length > 0 && (
-              <section className="rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-lg">
-                <h2 className="mb-3 text-sm font-semibold text-zinc-100">Рекомендованные курсы</h2>
-                <ul className="space-y-3 text-xs">
-                  {recs.courses.map((c) => (
-                    <li key={c.id} className="flex flex-col gap-1 rounded-xl border border-white/10 bg-slate-950/70 p-4">
-                      <a 
-                        href={c.url} 
-                        target="_blank" 
+          {/* Рекомендации LLM */}
+          <section className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 space-y-2">
+            <h2 className="text-lg font-semibold">Рекомендации LLM</h2>
+            {activeStrategy?.summary ? (
+              <p className="text-sm text-slate-300 whitespace-pre-line">
+                {activeStrategy.summary}
+              </p>
+            ) : profile?.strategysummary ? (
+              <p className="text-sm text-slate-300 whitespace-pre-line">
+                {profile.strategysummary}
+              </p>
+            ) : (
+              <p className="text-sm text-slate-400">
+                Пока нет рекомендаций. Добавьте курс, чтобы получить
+                персональную стратегию.
+              </p>
+            )}
+          </section>
+        </div>
+
+        {/* Ваши стратегии */}
+        <section className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 space-y-4">
+          <h2 className="text-lg font-semibold">
+            Ваши стратегии ({strategies.length})
+          </h2>
+          {strategies.length === 0 ? (
+            <p className="text-sm text-slate-400">
+              Стратегий пока нет. Добавьте курс Stepik, чтобы сгенерировать
+              первую стратегию.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {strategies.map((s) => (
+                <div
+                  key={s.id}
+                  className="border border-slate-800 rounded-lg p-4 bg-slate-950/40"
+                >
+                  <div className="flex justify-between items-center gap-2">
+                    <div>
+                      <div className="font-medium">
+                        {s.course.title || "Курс без названия"}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        Уровень: {s.course.level}
+                      </div>
+                    </div>
+                    {s.course.url && (
+                      <a
+                        href={s.course.url}
+                        target="_blank"
                         rel="noreferrer"
-                        className="text-sm font-medium text-blue-300 hover:text-blue-200 hover:underline"
+                        className="text-xs text-sky-400 hover:underline"
                       >
-                        {c.title}
+                        Открыть на Stepik
                       </a>
-                      <span className="text-[11px] text-zinc-400">
-                        {c.level} • {c.language} • {c.formattype}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-          </>
-        )}
-      </main>
-    </div>
-  )
-}
+                    )}
+                  </div>
+
+                  {s.summary && (
+                    <p className="mt-2 text-sm text-slate-300 line-clamp-3">
+                      {s.summary}
+                    </p>
+                  )}
+
+                                    {s.pace && (
+                    <p className="mt-1 text-xs text-slate-400">
+                      Темп: {s.pace}
+                    </p>
+                  )}
+
+                  {s.format_tips && s.format_tips.length > 0 && (
+                    <ul className="mt-2 text-xs text-slate-400 list-disc list-inside space-y-0.5">
+                      {s.format_tips.map((tip, i) => (
+                        <li key={i}>{tip}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Рекомендованные курсы */}
+        <section className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 space-y-4">
+          <h2 className="text-lg font-semibold">Рекомендованные курсы</h2>
+          {recommendedCourses.length === 0 ? (
+            <p className="text-sm text-slate-400">
+              Пока нет рекомендованных курсов.
+            </p>
+          ) : (
+            <ul className="space-y-2 text-sm text-slate-300">
+              {recommendedCourses.map((c) => (
+                <li key={c.id} className="flex flex-col">
+                  <span className="font-medium">{c.title}</span>
+                  <span className="text-xs text-slate-400">
+                    {c.level} • {c.language} • {c.formattype}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+};
+
+export default DashboardPage;

@@ -45,7 +45,27 @@ def generate_strategy_view(request, user_id):
         # Генерируем и сохраняем стратегию
         result = generate_and_save_strategy(profile, course)
         
-        return Response(result, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "status": result.get("status", "unknown"),
+                "created": result.get("created", False),
+                "strategy": {
+                    "course": {
+                        "id": course.id,
+                        "title": course.title,
+                        "level": course.level,
+                        "url": course.url,
+                    },
+                    "summary": result["strategy"].get("summary", ""),
+                    "pace": result["strategy"].get("pace", ""),
+                    "format_tips": result["strategy"].get("format_tips", []),
+                    "steps": result["strategy"].get("steps", []),
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
         
     except Exception as e:
         logger.error(f"Error in generate_strategy_view: {e}")

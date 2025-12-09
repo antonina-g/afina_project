@@ -445,86 +445,64 @@ def onboarding_answers(request):
 @permission_classes([AllowAny])
 def add_user_course(request):
     """
-    Добавление курса по ссылке Stepik.
+    Принимает ссылку на курс Stepik, находит или создаёт Course и возвращает его id.
+    Ожидаемый body:
+    {
+        "stepik_url": "https://stepik.org/course/59426/syllabus"
+    }
     """
-    url = request.data.get('stepik_url')
-
-    if not url:
+    stepik_url = request.data.get('stepik_url')
+    if not stepik_url:
         return Response(
-            {'error': 'stepik_url required'},
-            status=status.HTTP_400_BAD_REQUEST
+            {"error": "stepik_url is required"},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
-    match = re.search(r'stepik\.org/course/(\d+)', url)
-    if not match:
-        return Response(
-            {'error': 'Invalid Stepik URL format'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    stepik_id = int(match.group(1))
-
-    if Course.objects.filter(stepik_id=stepik_id).exists():
-        existing = Course.objects.get(stepik_id=stepik_id)
-        return Response({
-            'message': 'Course already exists',
-            'course': {
-                'id': existing.id,
-                'title': existing.title,
-                'level': existing.level,
-                'language': existing.language,
-                'url': existing.url,
-            }
-        }, status=status.HTTP_200_OK)
-
+    # Пробуем достать stepik_id из URL
+    # Пример: https://stepik.org/course/59426/syllabus -> 59426
     try:
-        api_url = 'https://stepik.org/api/courses'
-        resp = requests.get(api_url, params={'ids[]': stepik_id}, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-        courses = data.get('courses', [])
-        if not courses:
-            return Response(
-                {'error': 'Course not found in Stepik API'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        course_data = courses[0]
-    except requests.RequestException as e:
+        parts = stepik_url.rstrip('/').split('/')
+        # найдем первое число в хвосте URL
+        stepik_id = None
+        for part in parts:
+            if part.isdigit():
+                stepik_id = int(part)
+        if stepik_id is None:
+            raise ValueError("No numeric id in URL")
+    except Exception:
         return Response(
-            {'error': f'Stepik API request failed: {e}'},
-            status=status.HTTP_502_BAD_GATEWAY
+            {"error": "Invalid Stepik URL"},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
-    title = course_data.get('title') or f'Course #{stepik_id}'
-    summary = course_data.get('summary') or ''
-    description = course_data.get('description') or ''
-    full_description = (summary + '\n\n' + description).strip()
-    level = course_data.get('difficulty') or 'beginner'
-    language = course_data.get('language') or 'ru'
-
-    course = Course(
+    course, created = Course.objects.get_or_create(
         stepik_id=stepik_id,
-        title=title[:255],
-        description=full_description[:1000],
-        level=level,
-        language=language,
-        format_type=course_data.get('course_format') or 'mixed',
-        url=f'https://stepik.org/course/{stepik_id}/',
-        source='user_added',
-        stepik_url=url,
+        defaults={
+            "title": f"Stepik course {stepik_id}",
+            "description": "",
+            "level": "beginner",
+            "language": "ru",
+            "format_type": "video",
+            "duration_hours": None,
+            "url": stepik_url,
+            "rating": None,
+            "source": "user_added",
+            "stepik_url": stepik_url,
+        },
     )
-    course.save()
 
-    return Response({
-        'message': 'Курс успешно добавлен!',
-        'course': {
-            'id': course.id,
-            'title': course.title,
-            'level': course.level,
-            'language': course.language,
-            'url': course.url,
-        }
-    }, status=status.HTTP_201_CREATED)
+    return Response(
+        {
+            "course": {
+                "id": course.id,
+                "stepik_id": course.stepik_id,
+                "title": course.title,
+                "url": course.url,
+            },
+            "created": created,
+        },
+        status=status.HTTP_200_OK,
+    )
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
