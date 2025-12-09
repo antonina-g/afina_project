@@ -14,8 +14,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #020617; /* тёмный фон под Athena */
+    --foreground: #f9fafb; /* светлый текст */
   }
 }
 
@@ -23,4 +23,67 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ===== Скроллбар ===== */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* ===== Анимации Athena: hero + лоадер ===== */
+
+/* Светящийся нижний бордер в hero */
+@keyframes heroGlow {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scaleX(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scaleX(1.05);
+  }
+}
+
+/* Три точки‑лоадера в кнопках */
+.dot-loader {
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.7);
+  animation: dotPulse 900ms infinite ease-in-out;
+}
+
+.dot-loader.delay-75 {
+  animation-delay: 0.15s;
+}
+
+.dot-loader.delay-150 {
+  animation-delay: 0.3s;
+}
+
+@keyframes dotPulse {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-2px);
+    opacity: 1;
+  }
 }
