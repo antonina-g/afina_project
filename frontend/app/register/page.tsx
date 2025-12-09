@@ -43,7 +43,7 @@ export default function RegisterPage() {
       setSuccess("Регистрация успешна! Переводим на главную...");
       
       // Сохраняем токен и ID пользователя
-      localStorage.setItem("userId", String(data.id));
+      localStorage.setItem("userId", String(data.user_id));
       localStorage.setItem("accessToken", data.access);
       localStorage.setItem("username", data.username); 
       localStorage.setItem("email", data.email);       

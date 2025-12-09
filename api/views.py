@@ -232,39 +232,45 @@ def get_profile(request, user_id):
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
-        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "User not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
     try:
         profile = user.profile
     except UserProfile.DoesNotExist:
-        return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Profile not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
-    # все сохранённые стратегии для этого пользователя
-    strategies = LearningStrategy.objects.filter(user=profile).select_related('course')  # Исправлено: user=profile
-    strategies_data = [
-        {
-            "course_id": s.course.id,
-            "course_title": s.course.title,
-            "created_at": s.created_at,
-            "summary": s.strategy_json.get("summary") if s.strategy_json else None,
-            "pace": s.strategy_json.get("pace") if s.strategy_json else None,
-        }
-        for s in strategies
-    ]
+    strategies = LearningStrategy.objects.filter(user=profile).select_related('course')
+    strategies_data = []
+    for s in strategies:
+        data = s.strategy_json or {}
+        strategies_data.append({
+            "courseid": s.course.id,
+            "coursetitle": s.course.title,
+            "createdat": s.created_at,
+            "summary": data.get("summary"),
+            "pace": data.get("pace"),
+        })
 
     return Response({
-        'user_id': user.id,
-        'username': user.username,
-        'learning_style': profile.learning_style,
-        'memory_score': profile.memory_score,
-        'discipline_score': profile.discipline_score,
-        'recommended_format': profile.recommended_format,
-        'recommended_pace': profile.recommended_pace,
-        'strategy_summary': profile.strategy_summary,
-        'goals': profile.goals,
-        'interests': profile.interests,
-        'strategies': strategies_data,
-    })
+        "userid": user.id,
+        "username": user.username,
+        "learningstyle": profile.learning_style,
+        "memoryscore": profile.memory_score,
+        "disciplinescore": profile.discipline_score,
+        "recommendedformat": profile.recommended_format,
+        "recommendedpace": profile.recommended_pace,
+        "strategysummary": profile.strategy_summary,
+        "goals": profile.goals,
+        "interests": profile.interests,
+        "strategies": strategies_data,
+    }, status=status.HTTP_200_OK)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
