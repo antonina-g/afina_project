@@ -450,7 +450,8 @@ const DashboardPage: React.FC = () => {
             Прогресс и геймификация Афины
           </h2>
 
-          <div className="grid md:grid-cols-3 gap-4 text-sm text-slate-200">
+          <div className="grid md:grid-cols-2 gap-4 text-sm text-slate-200">
+            {/* Уровень */}
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">
                 Уровень
@@ -476,6 +477,7 @@ const DashboardPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Маршрут */}
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">
                 Маршрут
@@ -496,35 +498,9 @@ const DashboardPage: React.FC = () => {
                 Афина считает тебя активным, если есть хотя бы 1 стратегия.
               </p>
             </div>
-
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">
-                Карта знаний
-              </p>
-              <p className="text-sm">
-                Маршрут заполнен на{" "}
-                <span className="font-semibold">
-                  {gamification.completedPercent}%
-                </span>
-              </p>
-              <div className="flex gap-1 h-2">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 rounded-full bg-emerald-500/20"
-                    style={{
-                      opacity:
-                        i * 10 < gamification.completedPercent ? 0.9 : 0.2,
-                    }}
-                  />
-                ))}
-              </div>
-              <p className="text-xs text-slate-400">
-                Чем больше стратегий и шагов — тем ярче загорается карта.
-              </p>
-            </div>
           </div>
         </section>
+
 
         {/* Ваши стратегии */}
         <section className="bg-slate-900/60 border border-slate-700/80 rounded-2xl p-6 space-y-4 backdrop-blur-xl shadow-[0_24px_80px_rgba(15,23,42,0.95)] animate-fade-up [animation-delay:240ms]">
