@@ -25,7 +25,6 @@ export default function Home() {
   const benefitsInView = useInView(0.2);
   const coursesInView = useInView(0.2);
 
-  // параллакс-слой в hero
   const heroRef = useRef<HTMLDivElement | null>(null);
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
 
@@ -111,6 +110,7 @@ export default function Home() {
             </div>
           </div>
 
+          {/* вкладка «Курсы» убрана */}
           <nav className="hidden items-center gap-6 text-xs text-zinc-300 md:flex">
             <a href="/product" className="hover:text-white transition">
               Продукт
@@ -120,9 +120,6 @@ export default function Home() {
             </a>
             <a href="/ai-strategy" className="hover:text-white transition">
               ИИ‑стратегия
-            </a>
-            <a href="/courses-info" className="hover:text-white transition">
-              Курсы
             </a>
           </nav>
 
@@ -149,12 +146,11 @@ export default function Home() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pt-24 pb-10 space-y-12">
-        {/* HERO с параллаксом и glow */}
+        {/* HERO */}
         <section
           ref={heroRef}
           className="relative overflow-hidden rounded-3xl px-6 py-12 shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:px-10 hero-animated-bg"
         >
-          {/* параллакс‑слой: сетка точек */}
           <div
             className="pointer-events-none absolute inset-0 opacity-40 mix-blend-screen"
             style={{
@@ -187,7 +183,6 @@ export default function Home() {
           <div className="pointer-events-none absolute -left-32 bottom-[-80px] h-72 w-72 rounded-full bg-purple-400/30 blur-3xl" />
           <div className="pointer-events-none absolute -right-6 bottom-6 h-40 w-40 rounded-[2.5rem] border border-white/25 bg-white/10 shadow-[0_20px_60px_rgba(15,23,42,0.55)] backdrop-blur-2xl hero-glass-blob" />
 
-          {/* нижний светящийся бордер */}
           <div className="pointer-events-none absolute inset-x-6 bottom-0 h-1 rounded-t-full bg-gradient-to-r from-emerald-400/40 via-indigo-400/40 to-fuchsia-400/40 blur-[2px] animate-[heroGlow_4s_ease-in-out_infinite]" />
 
           <div className="relative z-10 space-y-7">
@@ -271,7 +266,7 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="group relative w-40 max-w-[45%] -translate-y-4 rotate-[8deg] transform-gpu rounded-2xl border border-white/15 bg-slate-950/60 px-3 py-3 text-[11px] shadow-[0_12px_35px_rgba(0,0,0,0.6)] transition hover:-translate-y-6 hover:rotate-[4deg] hover:border-fuchsia-400/70 hover:shadow-[0_22px_60px_rgba(236,72,153,0.55)] sm:w-48">
+                  <div className="group relative w-40 max-w-[45%] -translate-y-4 rotate-[8deg] transform-gpu rounded-2xl border border-white/15 bg-slate-950/60 px-3 py-3 text-[11px] shadow-[0_12px_35px_rgба(0,0,0,0.6)] transition hover:-translate-y-6 hover:rotate-[4deg] hover:border-fuchsia-400/70 hover:shadow-[0_22px_60px_rgba(236,72,153,0.55)] sm:w-48">
                     <p className="mb-1 text-[10px] uppercase tracking-[0.18em] text-fuchsia-300/80">
                       шаг 3
                     </p>
@@ -303,7 +298,7 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            <div className="group relative flex-1 cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-xs shadow-[0_10px_35px_rgba(0,0,0,0.6)] transition hover:border-emerald-300/70 hover:bg-emerald-400/5">
+            <div className="group relative flex-1 cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-xs shadow-[0_10px_35px_rgba(0,0,0,0.6)] transition hover:-translate-y-1 hover:border-emerald-300/70 hover:bg-emerald-400/5">
               <div className="pointer-events-none absolute -right-6 -top-6 h-16 w-16 rounded-full bg-emerald-400/20 blur-2xl transition group-hover:bg-emerald-400/35" />
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300/90">
                 память
@@ -314,7 +309,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="group relative flex-1 cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-xs shadow-[0_10px_35px_rgba(0,0,0,0.6)] transition hover:border-sky-300/70 hover:bg-sky-400/5">
+            <div className="group relative flex-1 cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-xs shadow-[0_10px_35px_rgба(0,0,0,0.6)] transition hover:-translate-y-1 hover:border-sky-300/70 hover:bg-sky-400/5">
               <div className="pointer-events-none absolute -right-6 -top-6 h-16 w-16 rounded-full bg-sky-400/20 blur-2xl transition group-hover:bg-sky-400/35" />
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-300/90">
                 темп
@@ -325,7 +320,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="group relative flex-1 cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-xs shadow-[0_10px_35px_rgba(0,0,0,0.6)] transition hover:border-fuchsia-300/70 hover:bg-fuchsia-400/5">
+            <div className="group relative flex-1 cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-xs shadow-[0_10px_35px_rgба(0,0,0,0.6)] transition hover:-translate-y-1 hover:border-fuchsia-300/70 hover:bg-fuchsia-400/5">
               <div className="pointer-events-none absolute -right-6 -top-6 h-16 w-16 rounded-full bg-fuchsia-400/20 blur-2xl transition group-hover:bg-fuchsia-400/35" />
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-fuchsia-300/90">
                 дисциплина
@@ -334,106 +329,6 @@ export default function Home() {
                 Напоминания, челленджи и видимый прогресс в маршруте помогают
                 не срываться даже в загруженные недели.
               </p>
-            </div>
-          </div>
-        </section>
-
-        {/* мини‑дашборд: сегодня по плану */}
-        <section className="rounded-3xl border border-white/10 bg-slate-950/80 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.6)]">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-zinc-50">
-                Сегодня по плану
-              </h2>
-              <p className="text-xs text-zinc-400">
-                Фрагмент твоего будущего дашборда: Athena даёт конкретный шаг на
-                день, а не просто список уроков.
-              </p>
-            </div>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-3 py-1 text-[11px] font-medium text-emerald-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
-              ИИ‑напоминание включено
-            </span>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-[1.1fr,1.2fr]">
-            <div className="flex items-center justify-center">
-              <div className="relative h-28 w-28">
-                <svg
-                  className="h-full w-full -rotate-90 text-zinc-800"
-                  viewBox="0 0 120 120"
-                >
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="48"
-                    stroke="currentColor"
-                    strokeWidth="10"
-                    fill="none"
-                    className="opacity-40"
-                  />
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="48"
-                    stroke="url(#grad)"
-                    strokeWidth="10"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeDasharray={2 * Math.PI * 48}
-                    strokeDashoffset={2 * Math.PI * 48 * (1 - 0.7)}
-                    className="transition-all duration-700"
-                  />
-                  <defs>
-                    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#4ade80" />
-                      <stop offset="100%" stopColor="#22c55e" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-sm font-semibold text-zinc-50">
-                    70%
-                  </span>
-                  <span className="text-[10px] text-zinc-400">
-                    плана на неделю
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.22em] text-indigo-300/80">
-                сегодняшний фокус
-              </p>
-              <p className="text-sm font-medium text-zinc-50">
-                15 минут повторения Python + одна задача на циклы
-              </p>
-              <p className="text-xs text-zinc-400">
-                Если сегодня не успеешь — Athena мягко сдвинет дедлайн и
-                перераспределит задания, не ломая общую стратегию.
-              </p>
-
-              <div className="mt-2 grid gap-2 sm:grid-cols-3 text-[11px] text-zinc-300">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-2">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-                    спринт
-                  </p>
-                  <p className="font-semibold">15 мин</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-2">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-                    курс
-                  </p>
-                  <p className="font-semibold">Python: основы</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-2">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-                    защита от выгорания
-                  </p>
-                  <p>запланирован 1 выходной</p>
-                </div>
-              </div>
             </div>
           </div>
         </section>
@@ -476,10 +371,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* курсы */}
+        {/* курсы в базе Athena */}
         <section
           ref={coursesInView.ref}
-          className={`space-y-4 rounded-3xl border border-white/8 bg-slate-950/70 p-6 shadow-[0_18px_60px_rgba(0,0,0,0.55)] transition-all duration-700 ${
+          className={`space-y-4 rounded-3xl border border-white/8 bg-slate-950/70 p-6 shadow-[0_18px_60px_rgба(0,0,0,0.55)] transition-all duration-700 ${
             coursesInView.inView
               ? "translate-y-0 opacity-100"
               : "translate-y-4 opacity-0"
@@ -492,7 +387,9 @@ export default function Home() {
                 Эти курсы используются для построения персональных стратегий.
               </p>
             </div>
-            <span className="text-[10px] text-zinc-500">API: {API_BASE_URL}</span>
+            <span className="text-[10px] text-zinc-500">
+              API: {API_BASE_URL}
+            </span>
           </div>
 
           {loading && (
