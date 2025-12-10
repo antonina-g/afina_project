@@ -266,14 +266,15 @@ def get_profile(request, user_id):
 
     strategies = LearningStrategy.objects.filter(user=profile).select_related('course')
     strategies_data = []
+
     for s in strategies:
-        data = s.strategy_json or {}
         strategies_data.append({
             "courseid": s.course.id,
             "coursetitle": s.course.title,
             "createdat": s.created_at,
-            "summary": data.get("summary"),
-            "pace": data.get("pace"),
+            "summary": s.summary,
+            "pace": s.pace,
+            "courseurl": s.course.url,
         })
 
     return Response({
@@ -289,7 +290,6 @@ def get_profile(request, user_id):
         "interests": profile.interests,
         "strategies": strategies_data,
     }, status=status.HTTP_200_OK)
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -403,8 +403,11 @@ def onboarding_answers(request):
                     user=profile,  # Исправлено: user=profile, а не user_id
                     course=course,
                     defaults={
-                        'strategy_json': strategy_data,
-                        'updated_at': timezone.now()
+                        'summary': strategy_data.get('summary', ''),
+                        'pace': strategy_data.get('pace', ''),
+                        'format_tips': strategy_data.get('format_tips', []),
+                        'steps': strategy_data.get('steps', []),
+                        'updated_at': timezone.now(),
                     }
                 )
                 
@@ -427,8 +430,11 @@ def onboarding_answers(request):
                     user=profile,
                     course=course,
                     defaults={
-                        'strategy_json': strategy_data,
-                        'updated_at': timezone.now()
+                        'summary': strategy_data.get('summary', ''),
+                        'pace': strategy_data.get('pace', ''),
+                        'format_tips': strategy_data.get('format_tips', []),
+                        'steps': strategy_data.get('steps', []),
+                        'updated_at': timezone.now(),
                     }
                 )
                 
@@ -611,10 +617,17 @@ def course_strategy(request):
         
         # Сохраняем
         LearningStrategy.objects.update_or_create(
-            user=profile,  # Исправлено: user=profile
+            user=profile,
             course=course,
-            defaults={'strategy_json': strategy_json}
+            defaults={
+                'summary': strategy_json.get('summary', ''),
+                'pace': strategy_json.get('pace', ''),
+                'format_tips': strategy_json.get('format_tips', []),
+                'steps': strategy_json.get('steps', []),
+                'updated_at': timezone.now(),
+            }
         )
+
         
         return Response({
             "status": "success",

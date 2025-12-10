@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 
 const API_BASE_URL = "http://localhost:8000/api";
 
@@ -79,18 +80,29 @@ const DashboardPage: React.FC = () => {
       setError(null);
       setLoading(true);
 
-      // Профиль
+      // --- 1. Профиль ---
       const resProfile = await fetch(`${API_BASE_URL}/profile/${userId}/`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
+
+      if (resProfile.status === 404) {
+        // Профиля ещё нет: показываем дашборд с подсказкой,
+        // не считаем это ошибкой
+        setProfile(null);
+        setStrategies([]);
+        setRecommendedCourses([]);
+        setError(null);
+        return;
+      }
+
       if (!resProfile.ok) {
         throw new Error("Ошибка загрузки профиля");
       }
+
       const profileData = await resProfile.json();
 
-      // ВАЖНО: здесь используются имена полей из views.get_profile
       setProfile({
         learningstyle: profileData.learningstyle,
         memoryscore: profileData.memoryscore,
@@ -100,7 +112,7 @@ const DashboardPage: React.FC = () => {
         strategysummary: profileData.strategysummary,
       });
 
-      // Рекомендации (курсы + возможные стратегии)
+      // --- 2. Рекомендации (курсы + возможные стратегии) ---
       const resRecs = await fetch(
         `${API_BASE_URL}/recommendations/${userId}/`,
         {
@@ -191,7 +203,7 @@ const DashboardPage: React.FC = () => {
         }
       );
 
-           if (!resStrategy.ok) {
+      if (!resStrategy.ok) {
         const err = await resStrategy.json().catch(() => ({}));
         throw new Error(err.error || "Ошибка генерации стратегии");
       }
@@ -208,8 +220,6 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const activeStrategy = strategies[0] || null;
-
   if (loading && !profile) {
     return <div className="text-white p-8">Загрузка дашборда...</div>;
   }
@@ -219,7 +229,13 @@ const DashboardPage: React.FC = () => {
       <div className="max-w-5xl mx-auto space-y-8">
         <header className="space-y-2">
           <div className="text-sm text-slate-400">ID: {userId}</div>
-          <h1 className="text-3xl font-bold">Афина</h1>
+
+          <Link href="/" className="inline-flex items-center gap-2">
+            <span className="text-3xl font-bold hover:text-sky-300 transition-colors">
+              Афина
+            </span>
+          </Link>
+
           <p className="text-slate-400">Ваш персонализированный дашборд.</p>
         </header>
 
@@ -270,31 +286,26 @@ const DashboardPage: React.FC = () => {
               </ul>
             ) : (
               <p className="text-sm text-slate-400">
-                Профиль не найден. Пройдите онбординг.
+                Профиль ещё не создан. Сначала пройдите онбординг.
               </p>
             )}
           </section>
 
-          {/* Рекомендации LLM */}
+          {/* Рекомендации LLM — только общие по тесту */}
           <section className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 space-y-2">
             <h2 className="text-lg font-semibold">Рекомендации LLM</h2>
-            {activeStrategy?.summary ? (
-              <p className="text-sm text-slate-300 whitespace-pre-line">
-                {activeStrategy.summary}
-              </p>
-            ) : profile?.strategysummary ? (
+            {profile?.strategysummary ? (
               <p className="text-sm text-slate-300 whitespace-pre-line">
                 {profile.strategysummary}
               </p>
             ) : (
               <p className="text-sm text-slate-400">
-                Пока нет рекомендаций. Добавьте курс, чтобы получить
-                персональную стратегию.
+                Пока нет рекомендаций. Пройдите тест, чтобы получить общие
+                советы по обучению.
               </p>
             )}
           </section>
         </div>
-
 
         {/* Ваши стратегии */}
         <section className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 space-y-4">
@@ -340,7 +351,7 @@ const DashboardPage: React.FC = () => {
                     </p>
                   )}
 
-                                    {s.pace && (
+                  {s.pace && (
                     <p className="mt-1 text-xs text-slate-400">
                       Темп: {s.pace}
                     </p>
