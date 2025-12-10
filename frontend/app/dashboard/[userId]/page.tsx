@@ -94,6 +94,9 @@ const DashboardPage: React.FC = () => {
     };
   }, [strategies]);
 
+  // главная стратегия для блока "Рекомендации LLM" — первая из списка
+  const mainStrategy = strategies[0] || null;
+
   const fetchDashboardData = async () => {
     if (!userId || !accessToken) {
       setError("Нет userId или токена. Перезайдите в систему.");
@@ -105,6 +108,7 @@ const DashboardPage: React.FC = () => {
       setError(null);
       setLoading(true);
 
+      // профиль
       const resProfile = await fetch(`${API_BASE_URL}/profile/${userId}/`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -134,6 +138,7 @@ const DashboardPage: React.FC = () => {
         strategysummary: profileData.strategysummary,
       });
 
+      // рекомендации и, при наличии, стратегии
       const resRecs = await fetch(
         `${API_BASE_URL}/recommendations/${userId}/`,
         {
@@ -150,6 +155,7 @@ const DashboardPage: React.FC = () => {
       if (recsData.strategies) {
         setStrategies(recsData.strategies);
       } else {
+        // если /recommendations не вернул стратегии — добираем из отдельного эндпоинта
         const resStrategies = await fetch(
           `${API_BASE_URL}/users/${userId}/strategies/`,
           {
@@ -193,6 +199,7 @@ const DashboardPage: React.FC = () => {
       setError(null);
       setLoadingStrategy(true);
 
+      // создаём/находим курс
       const resCourse = await fetch(`${API_BASE_URL}/add-course/`, {
         method: "POST",
         headers: {
@@ -210,6 +217,7 @@ const DashboardPage: React.FC = () => {
       const courseData = await resCourse.json();
       const courseId = courseData.course.id;
 
+      // генерируем стратегию LLM для этого курса
       const resStrategy = await fetch(
         `${API_BASE_URL}/users/${userId}/strategies/generate/`,
         {
@@ -229,6 +237,7 @@ const DashboardPage: React.FC = () => {
 
       await resStrategy.json();
 
+      // перезагружаем дашборд — стратегии и верхний блок обновятся
       await fetchDashboardData();
       setStepikUrl("");
     } catch (e: any) {
@@ -272,7 +281,6 @@ const DashboardPage: React.FC = () => {
 
       <div className="relative max-w-5xl mx-auto p-8 space-y-8 animate-fade-up">
         <header className="space-y-2">
-          {/* ID убран */}
           <Link href="/" className="inline-flex items-center gap-3 group">
             <span className="h-8 w-8 rounded-2xl bg-sky-500/20 flex items-center justify-center text-sky-300 shadow-[0_0_25px_rgba(56,189,248,0.5)] group-hover:shadow-[0_0_40px_rgba(56,189,248,0.8)] transition-shadow">
               А
@@ -302,8 +310,8 @@ const DashboardPage: React.FC = () => {
             Добавить курс Stepik
           </h2>
           <p className="text-sm text-slate-400">
-            Вставь ссылку на курс — Афина найдёт его в базе и построит стратегию
-            под твой профиль.
+            Вставь ссылку на курс — Афина найдёт его в базе и построит
+            стратегию под твой профиль.
           </p>
           <div className="flex flex-col md:flex-row gap-3">
             <input
@@ -375,7 +383,7 @@ const DashboardPage: React.FC = () => {
             )}
           </section>
 
-          {/* Магический блок Рекомендации LLM */}
+          {/* Рекомендации LLM */}
           <section className="relative rounded-2xl p-[1px] animate-fade-up [animation-delay:160ms]">
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-sky-500 via-indigo-500 to-purple-500 opacity-60 blur-md" />
             <div className="relative bg-slate-950/70 rounded-2xl border border-sky-500/40 backdrop-blur-2xl overflow-hidden shadow-[0_0_60px_rgba(56,189,248,0.55)]">
@@ -396,14 +404,25 @@ const DashboardPage: React.FC = () => {
                   ЛИЧНЫЙ ИИ‑НАСТАВНИК
                 </p>
 
-                {profile?.strategysummary ? (
-                  <p className="text-sm text-sky-50/90 whitespace-pre-line leading-relaxed">
-                    {profile.strategysummary}
-                  </p>
+                {mainStrategy ? (
+                  <>
+                    <p className="text-sm text-sky-50/90 whitespace-pre-line leading-relaxed">
+                      {mainStrategy.summary}
+                    </p>
+
+                    {mainStrategy.format_tips &&
+                      mainStrategy.format_tips.length > 0 && (
+                        <ul className="mt-2 text-xs text-sky-100/80 list-disc list-inside space-y-1">
+                          {mainStrategy.format_tips.map((tip, i) => (
+                            <li key={i}>{tip}</li>
+                          ))}
+                        </ul>
+                      )}
+                  </>
                 ) : (
                   <p className="text-sm text-sky-100/80">
-                    Пока нет рекомендаций. Пройдите онбординг, и Афина соберёт
-                    для вас первую ИИ‑стратегию.
+                    Пока нет рекомендаций. Пройдите онбординг или добавьте курс
+                    Stepik, и Афина соберёт для вас первую ИИ‑стратегию.
                   </p>
                 )}
 

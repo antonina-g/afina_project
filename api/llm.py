@@ -1,100 +1,15 @@
 from typing import List, Dict
-from courses.models import UserProfile, Course
 import json
-from typing import Dict
-from courses.models import UserProfile, Course
-import requests
-from django.conf import settings
 import logging
-# api/llm.py - добавьте эти импорты в начало, если их нет
+import requests
+
+from django.conf import settings
 from django.utils import timezone
-from courses.models import LearningStrategy
-import json
 
-def generate_and_save_strategy(profile: UserProfile, course: Course) -> Dict:
-    """
-    Основная функция: генерирует стратегию через LLM и сохраняет в БД
-    """
-    try:
-        # 1. Генерируем стратегию через LLM
-        strategy_data = call_llm_for_strategy(profile, course)
-        
-        # 2. Сохраняем или обновляем стратегию в БД
-        strategy, created = LearningStrategy.objects.update_or_create(
-            user=profile,
-            course=course,
-            defaults={
-                'summary': strategy_data.get('summary', ''),
-                'pace': strategy_data.get('pace', ''),
-                'format_tips': strategy_data.get('format_tips', []),
-                'steps': strategy_data.get('steps', []),
-                'updated_at': timezone.now()
-            }
-        )
-        
-        logger.info(f"{'Created' if created else 'Updated'} strategy for user {profile.id} and course {course.id}")
-        
-        return {
-            "status": "success",
-            "strategy": strategy_data,
-            "created": created
-        }
-        
-    except Exception as e:
-        logger.error(f"Error generating strategy: {e}")
-        # В случае ошибки - возвращаем заглушку и сохраняем её
-        strategy_data = call_llm_for_strategy_stub(profile, course)
-        
-        strategy, created = LearningStrategy.objects.update_or_create(
-            user=profile,
-            course=course,
-            defaults={
-                'summary': strategy_data.get('summary', ''),
-                'pace': strategy_data.get('pace', ''),
-                'format_tips': strategy_data.get('format_tips', []),
-                'steps': strategy_data.get('steps', []),
-                'updated_at': timezone.now()
-            }
-        )
-        
-        return {
-            "status": "fallback",
-            "strategy": strategy_data,
-            "created": created,
-            "error": str(e)
-        }
+from courses.models import UserProfile, Course, LearningStrategy
+
+
 logger = logging.getLogger(__name__)
-
-# ← ВАШИ SYSTEM_PROMPT и build_user_prompt остаются
-
-def call_llm_for_strategy(profile, course):
-    """Приоритет: Ollama → stub"""
-    try:
-        return call_ollama(profile, course)
-    except Exception as e:
-        logger.error(f"Ollama error: {e}")
-        return call_llm_for_strategy_stub(profile, course)
-
-def call_ollama(profile, course):
-    """Вызов локальной Ollama"""
-    prompt = build_user_prompt(profile, course)
-    
-    response = requests.post(f"{settings.OLLAMA_URL}/api/chat", json={
-        "model": "qwen2.5:3b",
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt}
-        ],
-        "format": "json", 
-        "stream": False
-    })
-    
-    if response.status_code == 200:
-        content = response.json()['message']['content']
-        return json.loads(content)
-    else:
-        raise Exception(f"Ollama error: {response.status_code}")
-
 
 
 SYSTEM_PROMPT = """
@@ -175,8 +90,7 @@ def build_user_prompt(profile: UserProfile, course: Course) -> str:
 
 def build_llm_profile_context(profile: UserProfile) -> str:
     """
-    Собирает текстовое описание профиля пользователя для передачи в LLM.
-    Это удобно объяснять на защите как 'user model'.
+    Текстовое описание профиля пользователя (на будущее, для других промптов).
     """
     parts = [
         f"Learning style: {profile.learning_style}",
@@ -187,10 +101,10 @@ def build_llm_profile_context(profile: UserProfile) -> str:
     ]
     return "\n".join(parts)
 
+
 def build_llm_courses_context(courses: List[Course]) -> List[Dict]:
     """
     Превращает курсы из БД в компактный список словарей для передачи в LLM.
-    Это то, с чем модель будет работать при выборе рекомендаций.
     """
     result = []
     for c in courses:
@@ -205,47 +119,91 @@ def build_llm_courses_context(courses: List[Course]) -> List[Dict]:
         })
     return result
 
-def generate_learning_strategy_stub(profile: UserProfile) -> Dict:
-    """
-    Заглушка вместо реального вызова LLM.
-    Логика проста, но структура ответа такая же,
-    как будет у настоящей модели.
-    """
-    if profile.learning_style in ['visual', 'mixed']:
-        main_format = 'video + визуальные конспекты'
-    elif profile.learning_style == 'auditory':
-        main_format = 'аудио/подкасты + обсуждения'
-    elif profile.learning_style == 'read_write':
-        main_format = 'тексты + подробные заметки'
-    else:
-        main_format = 'практические задания и проекты'
 
-    if profile.discipline_score is not None and profile.discipline_score >= 8:
-        pace = 'интенсивный темп с ежедневными короткими сессиями'
-    elif profile.discipline_score is not None and profile.discipline_score >= 5:
-        pace = 'умеренный темп 3–4 раза в неделю'
-    else:
-        pace = 'медленный темп с небольшими, но регулярными шагами'
+def call_ollama(profile: UserProfile, course: Course) -> Dict:
+    """
+    Вызов локальной Ollama. При успехе возвращает dict с полями:
+    summary, pace, format_tips, steps.
+    """
+    prompt = build_user_prompt(profile, course)
 
-    summary = (
-        f"Рекомендуется формат: {main_format}. "
-        f"Рекомендуемый темп: {pace}. "
-        "Начните с одного основного курса и фиксируйте прогресс после каждого модуля."
+    response = requests.post(
+        f"{settings.OLLAMA_URL}/api/chat",
+        json={
+            "model": "qwen2.5:3b",
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            "format": "json",
+            "stream": False,
+        },
+        timeout=60,
     )
 
-    return {
-        "recommended_format": main_format,
-        "recommended_pace_description": pace,
-        "summary": summary,
-    }
+    if response.status_code != 200:
+        raise Exception(f"Ollama error: {response.status_code} {response.text}")
+
+    data = response.json()
+    if "message" not in data or "content" not in data["message"]:
+        raise Exception("Ollama response missing 'message.content'")
+
+    content = data["message"]["content"]
+
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError as e:
+        raise Exception(f"Failed to parse LLM JSON: {e}")
+
+    # Минимальная валидация структуры
+    if not isinstance(parsed, dict):
+        raise Exception("LLM JSON is not an object")
+
+    for key in ["summary", "pace", "format_tips", "steps"]:
+        if key not in parsed:
+            raise Exception(f"LLM JSON missing key: {key}")
+
+    return parsed
+
+
+def call_llm_for_strategy(profile: UserProfile, course: Course) -> Dict:
+    """
+    Основной вызов: сначала пытается пойти в Ollama, при ошибке — заглушка.
+    """
+    try:
+        logger.info(f"Calling Ollama for strategy: user_profile={profile.id}, course={course.id}")
+        return call_ollama(profile, course)
+    except Exception as e:
+        logger.error(f"Ollama error, using stub: {e}")
+        return call_llm_for_strategy_stub(profile, course)
+
 
 def call_llm_for_strategy_stub(profile: UserProfile, course: Course) -> Dict:
     """
     Заглушка вместо реального вызова LLM.
+    Структура ответа такая же, как у настоящей модели.
     """
+    learning_style = profile.learning_style or "mixed"
+
+    if learning_style in ["visual", "mixed"]:
+        main_format = "video + визуальные конспекты"
+    elif learning_style == "auditory":
+        main_format = "аудио/подкасты + обсуждения"
+    elif learning_style == "read_write":
+        main_format = "тексты + подробные заметки"
+    else:
+        main_format = "практические задания и проекты"
+
+    if profile.discipline_score is not None and profile.discipline_score >= 8:
+        pace_text = "интенсивный темп с ежедневными короткими сессиями"
+    elif profile.discipline_score is not None and profile.discipline_score >= 5:
+        pace_text = "умеренный темп 3–4 раза в неделю"
+    else:
+        pace_text = "медленный темп с небольшими, но регулярными шагами"
+
     summary = (
-        f"Курс '{course.title}' рекомендуется проходить с учётом вашего стиля "
-        f"'{profile.learning_style}' и уровня самодисциплины {profile.discipline_score}/10. "
+        f"Курс «{course.title}» рекомендуется проходить с учётом вашего стиля "
+        f"«{learning_style}» и уровня самодисциплины {profile.discipline_score or 'n/a'}/10. "
         "Фокусируйтесь на регулярной практике и коротких, но частых занятиях."
     )
 
@@ -254,26 +212,85 @@ def call_llm_for_strategy_stub(profile: UserProfile, course: Course) -> Dict:
         "pace": "3 занятия по 45–60 минут в неделю",
         "format_tips": [
             "После каждого урока делайте краткий конспект ключевых идей.",
-            "Раз в неделю повторяйте конспекты и выполняйте хотя бы одно практическое задание."
+            "Раз в неделю повторяйте конспекты и выполняйте хотя бы одно практическое задание.",
         ],
         "steps": [
             {
                 "title": "Этап 1: знакомство с курсом",
                 "description": "Пройдите первые 1–2 модуля и оформите визуальные заметки.",
-                "recommended_time": "3–4 часа"
+                "recommended_time": "3–4 часа",
             },
             {
                 "title": "Этап 2: закрепление основ",
                 "description": "Повторите ключевые темы и выполните базовые задания.",
-                "recommended_time": "4–5 часов"
+                "recommended_time": "4–5 часов",
             },
             {
                 "title": "Этап 3: регулярная практика",
                 "description": "Каждую неделю добавляйте 1 новый модуль и минимум один мини‑проект.",
-                "recommended_time": "4–6 часов в неделю"
-            }
-        ]
+                "recommended_time": "4–6 часов в неделю",
+            },
+        ],
     }
 
-    json.dumps(data, ensure_ascii=False)
     return data
+
+
+def generate_and_save_strategy(profile: UserProfile, course: Course) -> Dict:
+    """
+    Генерирует стратегию через LLM/заглушку и сохраняет/обновляет её в БД.
+    Возвращает dict с полями:
+    - status: "success" или "fallback"
+    - created: bool
+    - strategy: dict (summary, pace, format_tips, steps)
+    """
+    try:
+        strategy_data = call_llm_for_strategy(profile, course)
+
+        strategy, created = LearningStrategy.objects.update_or_create(
+            user=profile,
+            course=course,
+            defaults={
+                "summary": strategy_data.get("summary", ""),
+                "pace": strategy_data.get("pace", ""),
+                "format_tips": strategy_data.get("format_tips", []),
+                "steps": strategy_data.get("steps", []),
+                "updated_at": timezone.now(),
+            },
+        )
+
+        logger.info(
+            f"{'Created' if created else 'Updated'} strategy "
+            f"for user_profile={profile.id}, course={course.id}"
+        )
+
+        return {
+            "status": "success",
+            "strategy": strategy_data,
+            "created": created,
+        }
+
+    except Exception as e:
+        logger.error(f"Error generating strategy (hard failure): {e}")
+
+        # На всякий случай ещё раз подстрахуемся заглушкой
+        fallback_data = call_llm_for_strategy_stub(profile, course)
+
+        strategy, created = LearningStrategy.objects.update_or_create(
+            user=profile,
+            course=course,
+            defaults={
+                "summary": fallback_data.get("summary", ""),
+                "pace": fallback_data.get("pace", ""),
+                "format_tips": fallback_data.get("format_tips", []),
+                "steps": fallback_data.get("steps", []),
+                "updated_at": timezone.now(),
+            },
+        )
+
+        return {
+            "status": "fallback",
+            "strategy": fallback_data,
+            "created": created,
+            "error": str(e),
+        }

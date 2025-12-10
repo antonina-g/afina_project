@@ -2,17 +2,20 @@ import re
 import requests
 import logging
 
+from django.utils import timezone
+
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from django.utils import timezone
 
 from users.models import User
 from courses.models import Course, UserProfile, LearningStrategy
-from .llm import generate_learning_strategy_stub, call_llm_for_strategy_stub, call_llm_for_strategy
+from .llm import call_llm_for_strategy_stub, call_llm_for_strategy
+
 
 logger = logging.getLogger(__name__)
+
 
 STEPIC_API_URL = "https://stepik.org/api"
 
@@ -33,6 +36,7 @@ def fetch_stepik_course_title(stepik_id: int) -> str:
         logger.error(f"Error fetching Stepik course title {stepik_id}: {e}")
     return f"Stepik course {stepik_id}"
 
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def course_list(request):
@@ -50,6 +54,7 @@ def course_list(request):
         } for c in courses]
     })
 
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def onboarding_questions(request):
@@ -66,16 +71,16 @@ def onboarding_questions(request):
             ],
         },
         {
-        "id": 2,
-        "section": "learning_style",
-        "text": "2.	Когда вы вспоминаете, как дойти до места, вы ориентируетесь по:",
-        "options": [
-            {"value": "a", "label": "карте или визуальному образу"},
-            {"value": "b", "label": "рассказу или объяснению другого человека"},
-            {"value": "c", "label": "заметкам с указанием направлений"},
-            {"value": "d", "label": "памяти о собственных действиях"},
-        ],
-    },
+            "id": 2,
+            "section": "learning_style",
+            "text": " Когда вы вспоминаете, как дойти до места, вы ориентируетесь по:",
+            "options": [
+                {"value": "a", "label": "карте или визуальному образу"},
+                {"value": "b", "label": "рассказу или объяснению другого человека"},
+                {"value": "c", "label": "заметкам с указанием направлений"},
+                {"value": "d", "label": "памяти о собственных действиях"},
+            ],
+        },
         {
             "id": 3,
             "section": "learning_style",
@@ -108,8 +113,8 @@ def onboarding_questions(request):
                 {"value": "c", "label": "записываете его несколько раз"},
                 {"value": "d", "label": "связываете его с движением или действием"},
             ],
-    },
-       {
+        },
+        {
             "id": 6,
             "section": "learning_style",
             "text": "При просмотре видеоурока вы чаще:",
@@ -119,7 +124,8 @@ def onboarding_questions(request):
                 {"value": "c", "label": "читаете субтитры"},
                 {"value": "d", "label": "пробуете повторить действия"},
             ],
-    },   {
+        },
+        {
             "id": 7,
             "section": "memory",
             "text": "Вы легко запоминаете длинные списки слов?",
@@ -129,7 +135,8 @@ def onboarding_questions(request):
                 {"value": "c", "label": "редко"},
                 {"value": "d", "label": "почти никогда"},
             ],
-    },   {
+        },
+        {
             "id": 8,
             "section": "memory",
             "text": "Вам легко вспомнить, что вы делали неделю назад?",
@@ -139,7 +146,8 @@ def onboarding_questions(request):
                 {"value": "c", "label": "только после подсказки"},
                 {"value": "d", "label": "затрудняюсь"},
             ],
-    },   {
+        },
+        {
             "id": 9,
             "section": "memory",
             "text": "После прочтения текста вы обычно помните:",
@@ -149,7 +157,8 @@ def onboarding_questions(request):
                 {"value": "c", "label": "немного"},
                 {"value": "d", "label": "почти ничего"},
             ],
-    },   {
+        },
+        {
             "id": 10,
             "section": "memory",
             "text": "Если вы изучаете новый язык, слова запоминаются вам:",
@@ -159,7 +168,8 @@ def onboarding_questions(request):
                 {"value": "c", "label": "с трудом"},
                 {"value": "d", "label": "очень тяжело"},
             ],
-    },   {
+        },
+        {
             "id": 11,
             "section": "memory",
             "text": "Когда вы слышите цифры или факты, вы:",
@@ -169,7 +179,8 @@ def onboarding_questions(request):
                 {"value": "c", "label": "быстро забываете"},
                 {"value": "d", "label": "не запоминаете вообще"},
             ],
-    },   {
+        },
+        {
             "id": 12,
             "section": "memory",
             "text": "Ваша способность вспоминать детали из фильмов или книг:",
@@ -179,7 +190,8 @@ def onboarding_questions(request):
                 {"value": "c", "label": "средняя"},
                 {"value": "d", "label": "слабая"},
             ],
-    },   {
+        },
+        {
             "id": 13,
             "section": "discipline",
             "text": "Если у вас нет настроения учиться, вы всё равно садитесь за работу?",
@@ -189,7 +201,8 @@ def onboarding_questions(request):
                 {"value": "c", "label": "иногда"},
                 {"value": "d", "label": "нет"},
             ],
-    },   {
+        },
+        {
             "id": 14,
             "section": "discipline",
             "text": "Вы способны заниматься без напоминаний и дедлайнов?",
@@ -199,7 +212,8 @@ def onboarding_questions(request):
                 {"value": "c", "label": "редко"},
                 {"value": "d", "label": "нет"},
             ],
-    },   {
+        },
+        {
             "id": 15,
             "section": "discipline",
             "text": "Если задание сложное, вы:",
@@ -209,8 +223,8 @@ def onboarding_questions(request):
                 {"value": "c", "label": "ждёте вдохновения"},
                 {"value": "d", "label": "бросаете"},
             ],
-    },
-     {
+        },
+        {
             "id": 16,
             "section": "discipline",
             "text": "Когда вы учитесь, вас легко отвлечь?",
@@ -220,7 +234,8 @@ def onboarding_questions(request):
                 {"value": "c", "label": "часто"},
                 {"value": "d", "label": "постоянно"},
             ],
-    }, {
+        },
+        {
             "id": 17,
             "section": "discipline",
             "text": "Вы придерживаетесь расписания обучения?",
@@ -230,7 +245,8 @@ def onboarding_questions(request):
                 {"value": "c", "label": "не всегда"},
                 {"value": "d", "label": "нет"},
             ],
-    }, {
+        },
+        {
             "id": 18,
             "section": "discipline",
             "text": "Вы чувствуете удовлетворение, когда выполняете поставленную цель?",
@@ -240,10 +256,10 @@ def onboarding_questions(request):
                 {"value": "c", "label": "редко"},
                 {"value": "d", "label": "нет"},
             ],
-    },
-        
+        },
     ]
     return Response({"questions": questions})
+
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -253,7 +269,7 @@ def get_profile(request, user_id):
     except User.DoesNotExist:
         return Response(
             {"error": "User not found"},
-            status=status.HTTP_404_NOT_FOUND
+            status=status.HTTP_404_NOT_FOUND,
         )
 
     try:
@@ -261,7 +277,7 @@ def get_profile(request, user_id):
     except UserProfile.DoesNotExist:
         return Response(
             {"error": "Profile not found"},
-            status=status.HTTP_404_NOT_FOUND
+            status=status.HTTP_404_NOT_FOUND,
         )
 
     strategies = LearningStrategy.objects.filter(user=profile).select_related('course')
@@ -291,6 +307,7 @@ def get_profile(request, user_id):
         "strategies": strategies_data,
     }, status=status.HTTP_200_OK)
 
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def onboarding_answers(request):
@@ -301,7 +318,7 @@ def onboarding_answers(request):
     if not answers:
         return Response(
             {'error': 'answers are required'},
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     # --- Шкала 1: Learning Style (1–6) ---
@@ -368,64 +385,24 @@ def onboarding_answers(request):
     else:
         profile.recommended_format = 'practice'
 
-    # Генерация стратегии (твоя функция-заглушка)
-    strategy = generate_learning_strategy_stub(profile)
-    profile.strategy_summary = strategy["summary"]
-
-    fmt = strategy["recommended_format"]
-    if "video" in fmt:
-        profile.recommended_format = "video"
-    elif "аудио" in fmt or "подкаст" in fmt:
-        profile.recommended_format = "audio"
-    elif "текст" in fmt or "заметки" in fmt:
-        profile.recommended_format = "text"
-    elif "практичес" in fmt:
-        profile.recommended_format = "practice"
-    else:
-        profile.recommended_format = "mixed"
-
+    # Здесь больше не вызываем старый generate_learning_strategy_stub
+    # profile.strategy_summary оставляем как есть или наполним позже отдельным LLM-промптом
     profile.save()
 
     # === ГЕНЕРАЦИЯ СТРАТЕГИЙ ДЛЯ РЕКОМЕНДОВАННЫХ КУРСОВ ===
     strategies_generated = []
-    
+
     try:
         # Простой вариант: берем несколько популярных курсов
-        top_courses = Course.objects.filter(is_active=True)[:3]
-        
+        top_courses = Course.objects.all()[:3]
+
+
         for course in top_courses:
             try:
                 # Генерируем стратегию через LLM
                 strategy_data = call_llm_for_strategy(profile, course)
-                
+
                 # Сохраняем стратегию в БД
-                learning_strategy, created = LearningStrategy.objects.update_or_create(
-                    user=profile,  # Исправлено: user=profile, а не user_id
-                    course=course,
-                    defaults={
-                        'summary': strategy_data.get('summary', ''),
-                        'pace': strategy_data.get('pace', ''),
-                        'format_tips': strategy_data.get('format_tips', []),
-                        'steps': strategy_data.get('steps', []),
-                        'updated_at': timezone.now(),
-                    }
-                )
-                
-                strategies_generated.append({
-                    'course_id': course.id,
-                    'course_title': course.title,
-                    'status': 'success',
-                    'created': created,
-                    'strategy_summary': strategy_data.get('summary', '')[:100] + '...'
-                })
-                
-                logger.info(f"Generated strategy for user {user.id} and course {course.id}")
-                
-            except Exception as e:
-                logger.error(f"Error generating strategy for course {course.id}: {e}")
-                # В случае ошибки используем заглушку
-                strategy_data = call_llm_for_strategy_stub(profile, course)
-                
                 learning_strategy, created = LearningStrategy.objects.update_or_create(
                     user=profile,
                     course=course,
@@ -435,18 +412,45 @@ def onboarding_answers(request):
                         'format_tips': strategy_data.get('format_tips', []),
                         'steps': strategy_data.get('steps', []),
                         'updated_at': timezone.now(),
-                    }
+                    },
                 )
-                
+
+                strategies_generated.append({
+                    'course_id': course.id,
+                    'course_title': course.title,
+                    'status': 'success',
+                    'created': created,
+                    'strategy_summary': strategy_data.get('summary', '')[:100] + '...',
+                })
+
+                logger.info(f"Generated strategy for user {user.id} and course {course.id}")
+
+            except Exception as e:
+                logger.error(f"Error generating strategy for course {course.id}: {e}")
+                # В случае ошибки используем заглушку
+                strategy_data = call_llm_for_strategy_stub(profile, course)
+
+                learning_strategy, created = LearningStrategy.objects.update_or_create(
+                    user=profile,
+                    course=course,
+                    defaults={
+                        'summary': strategy_data.get('summary', ''),
+                        'pace': strategy_data.get('pace', ''),
+                        'format_tips': strategy_data.get('format_tips', []),
+                        'steps': strategy_data.get('steps', []),
+                        'updated_at': timezone.now(),
+                    },
+                )
+
                 strategies_generated.append({
                     'course_id': course.id,
                     'course_title': course.title,
                     'status': 'fallback',
                     'created': created,
                     'strategy_summary': strategy_data.get('summary', '')[:100] + '...',
-                    'note': 'Использована заглушка из-за ошибки LLM'
+                    'note': 'Использована заглушка из-за ошибки LLM',
                 })
-    
+
     except Exception as e:
         logger.error(f"Error in strategy generation: {e}")
         strategies_generated = []
@@ -463,8 +467,9 @@ def onboarding_answers(request):
             'strategy_summary': profile.strategy_summary,
         },
         'strategies_generated': strategies_generated,
-        'strategies_count': len(strategies_generated)
+        'strategies_count': len(strategies_generated),
     }, status=status.HTTP_200_OK)
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -484,7 +489,6 @@ def add_user_course(request):
         )
 
     # Пробуем достать stepik_id из URL
-    # Пример: https://stepik.org/course/59426/syllabus -> 59426
     try:
         parts = stepik_url.rstrip('/').split('/')
         stepik_id = None
@@ -530,6 +534,7 @@ def add_user_course(request):
         },
         status=status.HTTP_200_OK,
     )
+
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -596,25 +601,26 @@ def recommendations(request, user_id):
         'courses': response_courses,
     })
 
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def course_strategy(request):
-    """Генерирует и сохраняет стратегию обучения"""
+    """Генерирует и сохраняет стратегию обучения для одного курса."""
     data = request.data
-    
+
     try:
         user = request.user
         profile = user.profile
         course_id = data.get('course_id')
-        
+
         if not course_id:
             return Response({"error": "course_id is required"}, status=400)
-        
+
         course = Course.objects.get(id=course_id)
-        
+
         # Генерируем стратегию
         strategy_json = call_llm_for_strategy(profile, course)
-        
+
         # Сохраняем
         LearningStrategy.objects.update_or_create(
             user=profile,
@@ -625,18 +631,17 @@ def course_strategy(request):
                 'format_tips': strategy_json.get('format_tips', []),
                 'steps': strategy_json.get('steps', []),
                 'updated_at': timezone.now(),
-            }
+            },
         )
 
-        
         return Response({
             "status": "success",
             "message": "Стратегия создана и сохранена!",
             "user_id": user.id,
             "course_title": course.title,
-            "strategy": strategy_json
+            "strategy": strategy_json,
         })
-        
+
     except UserProfile.DoesNotExist:
         return Response({"error": "Профиль не найден"}, status=404)
     except Course.DoesNotExist:
@@ -644,6 +649,7 @@ def course_strategy(request):
     except Exception as e:
         logger.error(f"Error in course_strategy: {e}")
         return Response({"error": f"Ошибка: {str(e)}"}, status=500)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -654,20 +660,20 @@ def test_llm_strategy(request):
         user = request.user
         profile = user.profile
         course_id = data.get('course_id')
-        
+
         if not course_id:
             return Response({"error": "course_id is required"}, status=400)
-            
+
         course = Course.objects.get(id=course_id)
-        
+
         strategy = call_llm_for_strategy(profile, course)
         return Response({
             "status": "success",
-            "strategy": strategy
+            "strategy": strategy,
         })
     except Exception as e:
         logger.error(f"Error in test_llm_strategy: {e}")
         return Response({
-            "status": "error", 
-            "message": str(e)
+            "status": "error",
+            "message": str(e),
         }, status=400)
