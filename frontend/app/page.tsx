@@ -110,7 +110,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* вкладка «Курсы» убрана */}
+          {/* «Курсы» */}
           <nav className="hidden items-center gap-6 text-xs text-zinc-300 md:flex">
             <a href="/product" className="hover:text-white transition">
               Продукт

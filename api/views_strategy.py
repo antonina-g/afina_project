@@ -1,4 +1,4 @@
-# api/views_strategy.py
+
 
 import logging
 
@@ -146,8 +146,6 @@ def get_course_strategy(request, user_id, course_id):
         profile = get_object_or_404(UserProfile, user_id=user_id)
         course = get_object_or_404(Course, id=course_id)
 
-        # В будущем можно добавить форс‑обновление:
-        # refresh = request.query_params.get("refresh") == "1"
 
         try:
             # Пытаемся взять уже существующую стратегию

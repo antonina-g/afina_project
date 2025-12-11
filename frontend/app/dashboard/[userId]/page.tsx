@@ -94,7 +94,6 @@ const DashboardPage: React.FC = () => {
     };
   }, [strategies]);
 
-  // главная стратегия для блока "Рекомендации LLM" — первая из списка
   const mainStrategy = strategies[0] || null;
 
   const fetchDashboardData = async () => {
@@ -182,7 +181,6 @@ const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAddStrategy = async () => {

@@ -15,9 +15,9 @@ export default function UserProfile() {
     const storedUsername = localStorage.getItem("username");
     const storedEmail = localStorage.getItem("email");
 
-    console.log("Token:", token); // ← ЛОГИРОВАНИЕ
-    console.log("Username:", storedUsername); // ← ЛОГИРОВАНИЕ
-    console.log("Email:", storedEmail); // ← ЛОГИРОВАНИЕ
+    console.log("Token:", token); 
+    console.log("Username:", storedUsername); 
+    console.log("Email:", storedEmail); 
 
     if (token) {
       setIsLoggedIn(true);
@@ -36,7 +36,7 @@ const handleLogout = () => {
   setIsLoggedIn(false);
   setShowDropdown(false);
 
-  router.push("/login");   // можно "/" если хотите
+  router.push("/login");   
   router.refresh();        // обновить страницу
 };
 

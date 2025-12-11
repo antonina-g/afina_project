@@ -1,4 +1,3 @@
-# api/urls.py
 from django.urls import path
 from .views import (
     course_list,
@@ -17,7 +16,6 @@ urlpatterns = [
     path('onboarding/questions/', onboarding_questions, name='onboarding-questions'),
     path('onboarding/answers/', onboarding_answers, name='onboarding-answers'),
 
-    # здесь используем user_id и в URL, и во вьюхе
     path('profile/<int:user_id>/', get_profile, name='get-profile'),
     path('recommendations/<int:user_id>/', recommendations, name='recommendations'),
 

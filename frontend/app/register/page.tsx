@@ -45,7 +45,6 @@ export default function RegisterPage() {
 
       console.log("REGISTER RESPONSE", data);
 
-      // НИЧЕГО не сохраняем в localStorage здесь
       setSuccess("Регистрация успешна! Сейчас перейдём на вход...");
 
       setTimeout(() => {

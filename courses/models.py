@@ -76,7 +76,6 @@ class UserProfile(models.Model):
     )
     strategy_summary = models.TextField(blank=True)  # текстовая стратегия обучения
 
-    # Базовые доп-поля (на будущее)
     age = models.IntegerField(null=True, blank=True)
     goals = models.TextField(blank=True)        # цели обучения (карьера/универ/хобби)
     interests = models.TextField(blank=True)    # интересы/темы в свободной форме
@@ -102,8 +101,6 @@ class CourseProgress(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.course.title} ({self.progress_percent}%)"
 
-
-# courses/models.py - добавьте в конец файла или в соответствующее место
 
 class LearningStrategy(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='strategies')

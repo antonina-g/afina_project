@@ -40,9 +40,6 @@ def fetch_stepik_course_title(stepik_id: int) -> str:
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def course_list(request):
-    """
-    Простой список первых 20 курсов.
-    """
     courses = Course.objects.all()[:20]
     return Response({
         'count': courses.count(),
@@ -321,7 +318,7 @@ def onboarding_answers(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # --- Шкала 1: Learning Style (1–6) ---
+    #  Шкала 1: Learning Style (1–6) 
     style_counts = {'a': 0, 'b': 0, 'c': 0, 'd': 0}
     for q in range(1, 7):
         ans = answers.get(str(q))
@@ -342,7 +339,7 @@ def onboarding_answers(request):
         }
         learning_style = mapping.get(max_style, 'mixed')
 
-    # --- Шкала 2: Memory Score (7–12) ---
+    # Шкала 2: Memory Score (7–12)
     def score_letter(letter: str) -> int:
         if letter == 'a':
             return 10
@@ -361,7 +358,7 @@ def onboarding_answers(request):
             memory_scores.append(score_letter(ans))
     memory_score = round(sum(memory_scores) / len(memory_scores)) if memory_scores else None
 
-    # --- Шкала 3: Discipline Score (13–18) ---
+    # Шкала 3: Discipline Score (13–18)
     discipline_scores = []
     for q in range(13, 19):
         ans = answers.get(str(q))
@@ -369,7 +366,7 @@ def onboarding_answers(request):
             discipline_scores.append(score_letter(ans))
     discipline_score = round(sum(discipline_scores) / len(discipline_scores)) if discipline_scores else None
 
-    # --- Профиль пользователя ---
+    #  Профиль пользователя 
     profile, _ = UserProfile.objects.get_or_create(user=user)
     profile.learning_style = learning_style
     profile.memory_score = memory_score
@@ -385,11 +382,9 @@ def onboarding_answers(request):
     else:
         profile.recommended_format = 'practice'
 
-    # Здесь больше не вызываем старый generate_learning_strategy_stub
-    # profile.strategy_summary оставляем как есть или наполним позже отдельным LLM-промптом
     profile.save()
 
-    # === ГЕНЕРАЦИЯ СТРАТЕГИЙ ДЛЯ РЕКОМЕНДОВАННЫХ КУРСОВ ===
+    #ГЕНЕРАЦИЯ СТРАТЕГИЙ ДЛЯ РЕКОМЕНДОВАННЫХ КУРСОВ
     strategies_generated = []
 
     try:
@@ -503,7 +498,7 @@ def add_user_course(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Берём нормальное название курса через Stepik API
+    # Берём название курса через Stepik API
     course_title = fetch_stepik_course_title(stepik_id)
 
     course, created = Course.objects.get_or_create(
