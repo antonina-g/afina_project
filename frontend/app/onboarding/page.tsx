@@ -130,10 +130,10 @@ export default function OnboardingPage() {
           <p className="text-xs uppercase tracking-[0.25em] text-indigo-300/80">
             онбординг
           </p>
-          <h1 className="text-3xl font-semibold">Расскажем Athene, как ты учишься</h1>
+          <h1 className="text-3xl font-semibold">Расскажем Афине, как ты учишься</h1>
           <p className="text-sm text-zinc-400">
-            Ответь на вопросы о стиле обучения, памяти и дисциплине — Athena
-            построит стратегию под твой профиль.
+            Ответь на вопросы о стиле обучения, памяти и дисциплине - Athena
+            построит стратегию под твой профиль
           </p>
         </div>
 

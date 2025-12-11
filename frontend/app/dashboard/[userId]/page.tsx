@@ -286,7 +286,7 @@ const DashboardPage: React.FC = () => {
               А
             </span>
             <span className="text-3xl font-semibold tracking-tight group-hover:text-sky-200 transition-colors">
-              Афина — дашборд
+              Athena | Дашборд
             </span>
           </Link>
 
@@ -310,7 +310,7 @@ const DashboardPage: React.FC = () => {
             Добавить курс Stepik
           </h2>
           <p className="text-sm text-slate-400">
-            Вставь ссылку на курс — Афина найдёт его в базе и построит
+            Вставь ссылку на курс — Athena найдёт его в базе и построит
             стратегию под твой профиль.
           </p>
           <div className="flex flex-col md:flex-row gap-3">
@@ -447,7 +447,7 @@ const DashboardPage: React.FC = () => {
             <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/30 text-xs text-emerald-100">
               ⚡
             </span>
-            Прогресс и геймификация Афины
+            Прогресс и геймификация Athena
           </h2>
 
           <div className="grid md:grid-cols-2 gap-4 text-sm text-slate-200">
